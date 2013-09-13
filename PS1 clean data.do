@@ -118,4 +118,7 @@ foreach x of local vars_to_parse {
 * Create average score
 egen avg_score = rowmean(reading_reg_perc words_reg_perc math_reg_perc)
 
+* Save file
+save "PS1 cleaned.dta", replace
+
 * Boom.

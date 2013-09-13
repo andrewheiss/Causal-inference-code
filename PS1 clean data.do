@@ -57,93 +57,65 @@ fvset base 2 gkclasst
 *--------------------------------------
 * Super dumb percentile rank variable
 *--------------------------------------
-* Prepare tempfiles, get rid of extra variables to prepare for small percentile loop
-tempfile small regular main
-sort stdntid
-save `main', replace
-save `small', replace
-save `regular', replace
+* UPDATE! There's no need to do the giant 20-minute-long loop anymore. This new method (thanks to Ben!) works instantly and is just as accurate. Go back to this file's first commit in the git repository to see the old loop.
 
-* Calculate percentiles for regular class sizes
-use `regular', clear
-keep if gkclasst !=1
-keep gktreads gkwordsk gktmaths stdntid
+* Stata unfortunately doesn't let you pass multiple variables into a loop, unlike Python, where you can do:
+*   for thing1, thing2, thing3 in mylist:
+*     print(thing1, thing2, thing3)
+* So instead, we can fake it in Stata by creating a string with quoted chunks insde. -tokenize- will then separate each chunk into space-delimited parts, accessible in the loop with `1', `2', etc.
+* It's hacky, but it works.
+local vars_to_parse = `" "gktreads reading" "gkwordsk words" "gktmaths math" "' 
 
-* For some reason xtile, nq(100) doesn't work right... its scores are just a little bit off.
-* So you have to use your own round(x)/length(x) function
-foreach x in gktreads gkwordsk gktmaths {
-  gen `x'_regular = `x'
-  egen `x'_reg_rank = rank(`x'_regular)
-  egen `x'_reg_count = count(`x'_regular)
-  gen `x'_reg_perc = round(`x'_reg_rank / `x'_reg_count, .01) 
-  drop `x'_regular `x'_reg_count `x'_reg_rank
+* Create necessary variables (*_reg/small and *_reg_perc)
+foreach x of local vars_to_parse {
+  * Separate x into two parts: 1=variable, 2=label)
+  tokenize `x'
+
+  * Mark if observation is in a small or regular class
+  gen `2'_reg = `1' if gkclasst != 1
+  gen `2'_small = `1' if gkclasst == 1
+
+  * Calculate requisite parts of the rank(x)/length(x) formula
+  egen `2'_reg_rank = rank(`2'_reg)
+  egen `2'_reg_count = count(`2'_reg_rank)
+  gen `2'_reg_perc = round(`2'_reg_rank / `2'_reg_count, .01)
+
+  * Don't need these anymore
+  drop `2'_reg_rank `2'_reg_count
 }
 
-* Merge regular classes back into main dataset
-save `regular', replace
-merge 1:1 stdntid using `main'
-drop _merge
-sort stdntid
-save `main', replace
+* Magic percentile thing
+foreach x of local vars_to_parse {
+  tokenize `x'
+  
+  * Save a snapshot of current dataset
+  preserve
 
-* Create small dataset
-use `small', clear
-keep if gkclasst == 1
-keep gktreads gkwordsk gktmaths stdntid
-generate obs = _n
-local end = _N
-save `small', replace
+  * Drop all unnecessary data and calculate percentiles for remaining data
+  keep if flagsgk == 1
+  keep `1' `2'_reg_perc
+  drop if `1' == .
+  sort `1'
+  duplicates drop `1' `2'_reg_perc, force
+  replace `2'_reg_perc = `2'_reg_perc[_n-1] if missing(`2'_reg_perc)
 
-
-* Calculate percentile rank for small class scores using regular class distribution
-* --------------------------------------------------------------------------- *
-* --------------------------------- WARNING --------------------------------- *
-* --------------------------------------------------------------------------- *
-* This takes like 15 minutes to run because of all the temp files and nested
-* loops and stuff. Unfortunately there seems to be no other way to get this to
-* work. Running this in R with sapply() and parallel takes under 90 seconds.
-* Grr...
-forvalues i = 1/1900 {
-  foreach x in gktreads gkwordsk gktmaths {
-    * Keep track of progress
-    display "`i'.`x'"
-
-    * Open the small dataset, append one observation to the regular dataset 
-    use `small', clear
-    quietly keep if obs == `i'
-    append using `regular'
-
-    * Determine percentile rank
-    quietly egen `x'_small_rank = rank(`x')
-    quietly egen `x'_small_count = count(`x')
-    quietly generate `x'_small_perc = round(`x'_small_rank / `x'_small_count, .01)
-    drop `x'_small_count `x'_small_rank
-
-    * Only keep the small class observation
-    quietly keep if obs == `i'
-    sort stdntid
-
-    * Merge single small observation into the main dataset
-    quietly merge 1:1 stdntid using `main'
-    sort stdntid
-    drop _merge
-    quietly save `main', replace
-  }
+  * Save to a temporary file and restore original dataset
+  tempfile `2'_mapping
+  save `2'_mapping, replace
+  restore
 }
 
-* Determine average scores for three tests
-egen avg_small_score = rowmean(gktreads_small_perc gkwordsk_small_perc gktmaths_small_perc)
-egen avg_reg_score = rowmean(gktreads_reg_perc gkwordsk_reg_perc gktmaths_reg_perc)
+* Get rid of temporary *_reg_perc variables 
+drop reading_reg_perc words_reg_perc math_reg_perc
 
-* Combine class types into one column
-gen avg_score = avg_small_score if gkclasst ==1
-replace avg_score = avg_reg_score if gkclasst != 1
-label var avg_score "Average percentile rank score for reading, word, and math test"
+* Merge the percentiles from the temporary datasets back in
+foreach x of local vars_to_parse {
+  tokenize `x'
+  merge m:m `1' using `2'_mapping
+  drop _merge
+}
 
-* Remove extra variables
-drop obs avg_small_score avg_reg_score
-
-* Save this so you never, ever have to run it again!
-save "PS1 cleaned.dta", replace
+* Create average score
+egen avg_score = rowmean(reading_reg_perc words_reg_perc math_reg_perc)
 
 * Boom.

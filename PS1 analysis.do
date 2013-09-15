@@ -42,7 +42,7 @@ oneway lunch_present gkclasst, tabulate
 * Model 1
 foreach x in gktreads gktmaths gktlists gkwordsk {
   regress `x' i.gkclasst, cluster(gktchid)
-  outreg2 using Problem2_`x', word se dec(2) title(OLS: Actual Class Size - `x') ctitle(1) replace
+  outreg2 using Problem2_`x', word se dec(2) title(OLS: Actual Class Size - `x') ctitle(1) addn("Standard errors corrected with Huber-White clustering for gktchid") replace
 }
 
 * Model 2

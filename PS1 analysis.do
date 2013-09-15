@@ -125,14 +125,31 @@ oneway g8tmaths gkclasst, tabulate
 *-------------
 * Question 4
 *-------------
+* Teacher experience
+* Simple way
+tabulate gkclasst, sum(gktyears)  
+oneway gktyears gkclasst, tabulate
+
+* Control for school differences
+xtreg gktyears i.gkclasst, i(gkschid) fe vce(cluster gkschid)
+test 1.gkclasst 3.gkclasst
+
+
 * Teacher race
+* Simple way
 tabulate gkclasst t_whiteasian, row
 oneway t_whiteasian gkclasst, tabulate
 
+* Control for school differences
+xtreg gktrace i.gkclasst, i(gkschid) fe vce(cluster gkschid)
+test 1.gkclasst 3.gkclasst
+
+
 * Teacher education
+* Simple way
 tabulate gkclasst teacher_MA, row
 oneway teacher_MA gkclasst, tabulate
 
-* Teacher experience
-tabulate gkclasst, sum(gktyears)  
-oneway gktyears gkclasst, tabulate
+* Control for school differences
+xtreg gkthighd i.gkclasst, i(gkschid) fe vce(cluster gkschid)
+test 1.gkclasst 3.gkclasst

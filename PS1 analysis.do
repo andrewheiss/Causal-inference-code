@@ -63,6 +63,12 @@ foreach x in gktreads gktmaths gktlists gkwordsk {
   outreg2 using Problem2_`x', word se dec(2) title(OLS: Actual Class Size - `x') ctitle(4) append
 }
 
+* Combined table of final model for each subject test
+foreach x in gktreads gktmaths gktlists gkwordsk {
+  xtreg `x' i.gkclasst st_whiteasian st_girl freelunch t_whiteasian gktyears teacher_MA, i(gkschid) fe cluster(gktchid) nonest
+  outreg2 using Combined, word se dec(2) title(OLS: Actual Class Size - All four tests) ctitle(`x') append
+}
+
 
 *-------------
 * Question 3
@@ -71,6 +77,12 @@ foreach x in gktreads gktmaths gktlists gkwordsk {
 * Part a
 xtreg g8tmaths i.gkclasst st_whiteasian st_girl freelunch, i(gkschid) fe vce(cluster g8schid) nonest
 outreg2 using Problem3A, word se dec(2) title(OLS: Actual Class Size) ctitle(1) replace
+
+* Check if attrition is equal across class types
+* Missing 8th grade data
+recode g8tmaths (nonmissing = 1 "Present") (missing = 0 "Missing"), gen(g8maths_present)
+label var g8maths_present "Indicate whether 8th grade math test data is present"
+oneway g8maths_present gkclasst, tabulate
 
 
 *---------
@@ -83,43 +95,127 @@ mi impute regress g8tmaths st_whiteasian st_girl freelunch, add(1) rseed(1234) f
 * Indicator variable for imputed values
 gen imputed = 0
 replace imputed = 1 if g8tmaths != _1_g8tmaths
-label var imputed "Score was imputed" 
+label var imputed "Math score was imputed" 
 
 * Save imputed column to dataset
 mi set, clear 
 
 * Regression!
 xtreg g8tmaths_1_ i.gkclasst st_whiteasian st_girl freelunch imputed, i(g8schid) fe vce(cluster g8schid) nonest
+outreg2 using Problem3B, word se dec(2) title(OLS: Actual Class Size) ctitle(1) replace
 
 
 *---------
 * Part c
-summ gktmaths, d
-gen median_math = r(p50)
-gen min_math = r(min)
-gen max_math = r(max)
-gen attritor = (g8tmaths == .)
-gen med_attr_flag = (gktmaths > median_math & attritor ==1)
-replace med_attr_flag = . if attritor == 0
-gen med_attr_score = min_math if med_attr_flag == 0
-replace med_attr_score = max_math if med_attr_flag == 1
+* Get median, min, and max from summary information
+format g8tmaths %4.2f
 
-* Is the difference between 
-sum med_attr_score, d
-sum g8tmaths, d
+quietly centile(gktmaths)
+generate median_math_k = r(c_1)
 
-tabulate gkclasst, sum(med_attr_score)
-tabulate gkclasst, sum(g8tmaths)
-oneway med_attr_score gkclasst, tabulate
+quietly summ g8tmaths, d
+generate min_math_8 = r(min)
+generate max_math_8 = r(max)
+
+* Indicator variable to mark imputation
+generate attritor_math_8 = (g8tmaths == .)
+label var attritor_math_8 "Math score was imputed"
+
+* Max 8th grade score for those above the kindergarten median; min 8th grade score for those below the kindergarten median
+generate attr_math_8_score = max_math_8 if gktmaths >= median_math_k & attritor_math_8 == 1
+replace attr_math_8_score = min_math_8 if gktmaths < median_math_k & attritor_math_8 == 1
+
+* Combine scores
+generate adjusted_math_8 = g8tmaths
+replace adjusted_math_8 = attr_math_8_score if attr_math_8_score != .
+label var adjusted_math_8 "8th grade math scores with extreme imputations"
+
+* Look at differences in medians
+centile(adjusted_math_8)
+centile(g8tmaths)
+local orig_median = r(c_1)
+
+signrank adjusted_math_8 = `orig_median'
+
+* Do the differences between treatment groups grow or shrink after imputation?
+oneway adjusted_math_8 gkclasst, tabulate
 oneway g8tmaths gkclasst, tabulate
 
-* Differences grow with impuations, but with a lot more uncertainty (126 stdev vs 46)
+xtreg adjusted_math_8 i.gkclasst st_whiteasian st_girl freelunch attritor_math_8, i(g8schid) fe vce(cluster g8schid) nonest
+outreg2 using Problem3C, word se dec(2) title(OLS: Actual Class Size) ctitle(1) replace
 
 
 *---------
 * Part d
-* Do part a, b, and c for reading, science, and social science test scores
+* Do parts a and b for reading, science, and social science test scores
+* For some reason Stata complains about this...
+rename g8tmaths_1_  g8tmaths_stata
+
+* Loop!
+foreach x of varlist g8treads g8scienc g8social {
+  * Part a
+  xtreg `x' i.gkclasst st_whiteasian st_girl freelunch, i(gkschid) fe vce(cluster g8schid) nonest
+  outreg2 using Problem3D_`x', word se dec(2) title(OLS: Actual Class Size) ctitle(1) replace
+
+  * Part b
+  * Imputation
+  mi set wide
+  mi register imputed `x'
+  mi impute regress `x' st_whiteasian st_girl freelunch, add(1) rseed(1234) force
+
+  * Indicator variable for imputed values
+  gen imputed_`x' = 0
+  replace imputed_`x' = 1 if `x' != _1_`x'
+  label var imputed_`x' "Score was imputed" 
+
+  * Save imputed column to dataset
+  mi set, clear 
+
+  * Regression!
+  xtreg `x'_1_ i.gkclasst st_whiteasian st_girl freelunch imputed, i(g8schid) fe vce(cluster g8schid) nonest
+  outreg2 using Problem3D2_`x', word se dec(2) title(OLS: Actual Class Size) ctitle(1) replace
+
+  rename `x'_1_ `x'_stata
+}
+
+
 * Do part c for reading test scores (can't do c for science and social science)
+format g8treads %4.2f
+
+quietly centile(gktreads)
+generate median_read_k = r(c_1)
+
+quietly summ g8treads, d
+generate min_read_8 = r(min)
+generate max_read_8 = r(max)
+
+* Indicator variable to mark imputation
+generate attritor_read_8 = (g8treads == .)
+label var attritor_read_8 "Reading score was imputed"
+
+* Max 8th grade score for those above the kindergarten median; min 8th grade score for those below the kindergarten median
+generate attr_read_8_score = max_read_8 if gktreads >= median_read_k & attritor_read_8 == 1
+replace attr_read_8_score = min_read_8 if gktreads < median_read_k & attritor_read_8 == 1
+
+* Combine scores
+generate adjusted_read_8 = g8treads
+replace adjusted_read_8 = attr_read_8_score if attr_read_8_score != .
+label var adjusted_read_8 "8th grade reading scores with extreme imputations"
+
+* Look at differences in medians
+centile(adjusted_read_8)
+centile(g8treads)
+local orig_median = r(c_1)
+
+signrank adjusted_read_8 = `orig_median'
+
+* Do the differences between treatment groups grow or shrink after imputation?
+oneway adjusted_read_8 gkclasst, tabulate
+oneway g8treads gkclasst, tabulate
+
+xtreg adjusted_read_8 i.gkclasst st_whiteasian st_girl freelunch attritor_read_8, i(g8schid) fe vce(cluster g8schid) nonest
+outreg2 using Problem3D3, word se dec(2) title(OLS: Actual Class Size) ctitle(1) replace
+
 
 
 *-------------

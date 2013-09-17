@@ -149,7 +149,7 @@ outreg2 using Problem3C, word se dec(2) title(OLS: Actual Class Size) ctitle(1) 
 * Part d
 * Do parts a and b for reading, science, and social science test scores
 * For some reason Stata complains about this...
-rename g8tmaths_1_  g8tmaths_stata
+rename g8tmaths_1_ g8tmaths_stata
 
 * Loop!
 foreach x of varlist g8treads g8scienc g8social {
@@ -215,7 +215,6 @@ oneway g8treads gkclasst, tabulate
 
 xtreg adjusted_read_8 i.gkclasst st_whiteasian st_girl freelunch attritor_read_8, i(g8schid) fe vce(cluster g8schid) nonest
 outreg2 using Problem3D3, word se dec(2) title(OLS: Actual Class Size) ctitle(1) replace
-
 
 
 *-------------

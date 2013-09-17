@@ -1,0 +1,2289 @@
+----------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/andrew/Desktop/Untitled.log
+  log type:  text
+ opened on:  17 Sep 2013, 14:45:13
+
+. clear
+
+. cd "~/Documents/Duke 2013-2014/Fall 2013/PubPol 604/Problem set 1/"
+/Users/andrew/Documents/Duke 2013-2014/Fall 2013/PubPol 604/Problem set 1
+
+. use PS1.dta, clear
+
+. recode race (1 3 = 1 "White/Asian") (nonmissing = 0 "Not White"), gen(st_whiteasian)
+(4267 differences between race and st_whiteasian)
+
+. label var st_whiteasian "Student race is white or Asian"
+
+. generate birthday_actual=mdy(birthmon, birthday, birthyea)
+(71 missing values generated)
+
+. format birthday_actual %dM_d,_CY
+
+. generate age1985=(mdy(9,1,1985) - birthday_actual) / 365.25
+(71 missing values generated)
+
+. label var birthday_actual "Student birthday"
+
+. label var age1985 "Age on September 1, 1985"
+
+. generate stay_in_sample = flagsgk==1 & flagsg1==1 & flagsg2==1 & flagsg3==1
+
+. label define attrition_label 0 "Dropped" 1 "Stayed"
+
+. label values stay_in_sample attrition_label
+
+. label var stay_in_sample "Student remained in sample through 3rd grade"
+
+. recode gkfreelu (nonmissing = 1 "Present") (missing = 0 "Missing"), gen(lunch_present)
+(8549 differences between gkfreelu and lunch_present)
+
+. label var lunch_present "Indicate whether free/reduced lunch data is present"
+
+. recode gkfreelu (1 = 1 "Yes") (2 = 0 "No"), gen(freelunch)
+(3248 differences between gkfreelu and freelunch)
+
+. label var freelunch "Kindergarten student received free lunch"
+
+. recode gender (1 = 0 "Non-girl") (2 = 1 "Girl"), gen(st_girl)
+(11581 differences between gender and st_girl)
+
+. label var st_girl "Student is a girl"
+
+. recode gktrace (1 3 = 1 "White/Asian") (nonmissing = 0 "Not White"), gen(t_whiteasian)
+(1036 differences between gktrace and t_whiteasian)
+
+. label var t_whiteasian "Teacher race is white or asian"
+
+. recode gkthighd(3 4 5 6 = 1 Masters_Degree) (nonmissing = 0 no_Masters), gen(teacher_MA)
+(6304 differences between gkthighd and teacher_MA)
+
+. label var teacher_MA "Teacher has MA or higher"
+
+. format gkclasss %4.2f
+
+. format gktyears %4.2f
+
+. fvset base 2 gkclasst
+
+. local vars_to_parse = `" "gktreads reading" "gkwordsk words" "gktmaths math" "'
+
+. foreach x of local vars_to_parse {
+  2. tokenize `x'
+  3. gen `2'_reg = `1' if gkclasst != 1
+  4. gen `2'_small = `1' if gkclasst == 1
+  5. egen `2'_reg_rank = rank(`2'_reg)
+  6. egen `2'_reg_count = count(`2'_reg_rank)
+  7. gen `2'_reg_perc = round(`2'_reg_rank / `2'_reg_count, .01)
+  8. drop `2'_reg_rank `2'_reg_count
+  9. }
+(7551 missing values generated)
+(9862 missing values generated)
+(7551 missing values generated)
+(7551 missing values generated)
+(7505 missing values generated)
+(9846 missing values generated)
+(7505 missing values generated)
+(7505 missing values generated)
+(7492 missing values generated)
+(9839 missing values generated)
+(7492 missing values generated)
+(7492 missing values generated)
+
+. foreach x of local vars_to_parse {
+  2. tokenize `x'
+  3. preserve
+  4. keep if flagsgk == 1
+  5. keep `1' `2'_reg_perc
+  6. drop if `1' == .
+  7. sort `1'
+  8. duplicates drop `1' `2'_reg_perc, force
+  9. replace `2'_reg_perc = `2'_reg_perc[_n-1] if missing(`2'_reg_perc)
+ 10. tempfile `2'_mapping
+ 11. save `2'_mapping, replace
+ 12. restore
+ 13. }
+(5276 observations deleted)
+(536 observations deleted)
+
+Duplicates in terms of gktreads reading_reg_perc
+
+(5610 observations deleted)
+(87 real changes made)
+(note: file reading_mapping.dta not found)
+file reading_mapping.dta saved
+(5276 observations deleted)
+(474 observations deleted)
+
+Duplicates in terms of gkwordsk words_reg_perc
+
+(5780 observations deleted)
+(35 real changes made)
+(note: file words_mapping.dta not found)
+file words_mapping.dta saved
+(5276 observations deleted)
+(454 observations deleted)
+
+Duplicates in terms of gktmaths math_reg_perc
+
+(5798 observations deleted)
+(35 real changes made)
+(note: file math_mapping.dta not found)
+file math_mapping.dta saved
+
+. drop reading_reg_perc words_reg_perc math_reg_perc
+
+. foreach x of local vars_to_parse {
+  2. tokenize `x'
+  3. merge m:m `1' using `2'_mapping
+  4. drop _merge
+  5. }
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         5,812
+        from master                     5,812  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                             5,789  (_merge==3)
+    -----------------------------------------
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         5,750
+        from master                     5,750  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                             5,851  (_merge==3)
+    -----------------------------------------
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         5,730
+        from master                     5,730  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                             5,871  (_merge==3)
+    -----------------------------------------
+
+. egen avg_score = rowmean(reading_reg_perc words_reg_perc math_reg_perc)
+(5700 missing values generated)
+
+. save "PS1 cleaned.dta", replace
+file PS1 cleaned.dta saved
+
+. clear
+
+. cd "~/Documents/Duke 2013-2014/Fall 2013/PubPol 604/Problem set 1/"
+/Users/andrew/Documents/Duke 2013-2014/Fall 2013/PubPol 604/Problem set 1
+
+. use "PS1 cleaned.dta", clear
+
+. *-------------
+
+. * Question 1
+
+. *-------------
+
+. * Table 1, panel A
+
+. * Free lunch across kindergarten class types
+
+. tabulate gkclasst gkfreelu, row
+
++----------------+
+| Key            |
+|----------------|
+|   frequency    |
+| row percentage |
++----------------+
+
+                     |  FREE/REDUCED LUNCH
+      CLASSROOM TYPE |  STATUS KINDERGARTEN
+        KINDERGARTEN | FREE LUNC  NON-FREE  |     Total
+---------------------+----------------------+----------
+         SMALL CLASS |       891      1,001 |     1,892 
+                     |     47.09      52.91 |    100.00 
+---------------------+----------------------+----------
+       REGULAR CLASS |     1,044      1,143 |     2,187 
+                     |     47.74      52.26 |    100.00 
+---------------------+----------------------+----------
+REGULAR + AIDE CLASS |     1,117      1,104 |     2,221 
+                     |     50.29      49.71 |    100.00 
+---------------------+----------------------+----------
+               Total |     3,052      3,248 |     6,300 
+                     |     48.44      51.56 |    100.00 
+
+
+. oneway gkfreelu gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE |    Summary of FREE/REDUCED LUNCH
+KINDERGARTE |         STATUS KINDERGARTEN
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |           2           0        1892
+  REGULAR C |           2           0        2187
+  REGULAR + |           1           1        2221
+------------+------------------------------------
+      Total |           2           0        6300
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups       1.2137861      2   .606893049      2.43     0.0881
+ Within groups      1572.26177   6297   .249684257
+------------------------------------------------------------------------
+    Total           1573.47556   6299   .249797675
+
+Bartlett's test for equal variances:  chi2(2) =   0.0057  Prob>chi2 = 0.997
+
+. 
+. * Race
+
+. tabulate gkclasst st_whiteasian, row
+
++----------------+
+| Key            |
+|----------------|
+|   frequency    |
+| row percentage |
++----------------+
+
+                     | Student race is white
+      CLASSROOM TYPE |       or Asian
+        KINDERGARTEN | Not White  White/Asi |     Total
+---------------------+----------------------+----------
+         SMALL CLASS |       602      1,297 |     1,899 
+                     |     31.70      68.30 |    100.00 
+---------------------+----------------------+----------
+       REGULAR CLASS |       712      1,480 |     2,192 
+                     |     32.48      67.52 |    100.00 
+---------------------+----------------------+----------
+REGULAR + AIDE CLASS |       760      1,471 |     2,231 
+                     |     34.07      65.93 |    100.00 
+---------------------+----------------------+----------
+               Total |     2,074      4,248 |     6,322 
+                     |     32.81      67.19 |    100.00 
+
+
+. oneway st_whiteasian gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE | Summary of Student race is white or
+KINDERGARTE |                Asian
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |   .68299105   .46543351        1899
+  REGULAR C |   .67518248   .46841349        2192
+  REGULAR + |   .65934558   .47403555        2231
+------------+------------------------------------
+      Total |   .67193926   .46954421        6322
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups      .608842267      2   .304421133      1.38     0.2514
+ Within groups      1392.99318   6319   .220445194
+------------------------------------------------------------------------
+    Total           1393.60202   6321   .220471765
+
+Bartlett's test for equal variances:  chi2(2) =   0.7238  Prob>chi2 = 0.696
+
+. 
+. * Age in 1985
+
+. tabulate gkclasst, sum(age1985)
+
+  CLASSROOM |
+       TYPE |
+KINDERGARTE | Summary of Age on September 1, 1985
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |   5.4386655    .3482494        1896
+  REGULAR C |   5.4223147   .35033733        2190
+  REGULAR + |    5.428017   .34958654        2229
+------------+------------------------------------
+      Total |   5.4292366   .34945387        6315
+
+. oneway age1985 gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE |
+KINDERGARTE | Summary of Age on September 1, 1985
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |   5.4386655    .3482494        1896
+  REGULAR C |   5.4223147   .35033733        2190
+  REGULAR + |    5.428017   .34958654        2229
+------------+------------------------------------
+      Total |   5.4292366   .34945387        6315
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups      .276805394      2   .138402697      1.13     0.3220
+ Within groups      770.776311   6312    .12211285
+------------------------------------------------------------------------
+    Total           771.053117   6314    .12211801
+
+Bartlett's test for equal variances:  chi2(2) =   0.0737  Prob>chi2 = 0.964
+
+. 
+. * Attrition
+
+. tabulate gkclasst stay_in_sample, row
+
++----------------+
+| Key            |
+|----------------|
+|   frequency    |
+| row percentage |
++----------------+
+
+                     |  Student remained in
+                     |  sample through 3rd
+      CLASSROOM TYPE |         grade
+        KINDERGARTEN |   Dropped     Stayed |     Total
+---------------------+----------------------+----------
+         SMALL CLASS |       926        974 |     1,900 
+                     |     48.74      51.26 |    100.00 
+---------------------+----------------------+----------
+       REGULAR CLASS |     1,136      1,058 |     2,194 
+                     |     51.78      48.22 |    100.00 
+---------------------+----------------------+----------
+REGULAR + AIDE CLASS |     1,180      1,051 |     2,231 
+                     |     52.89      47.11 |    100.00 
+---------------------+----------------------+----------
+               Total |     3,242      3,083 |     6,325 
+                     |     51.26      48.74 |    100.00 
+
+
+. oneway stay_in_sample gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE |   Summary of Student remained in
+KINDERGARTE |      sample through 3rd grade
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |   .51263158   .49997201        1900
+  REGULAR C |   .48222425   .49979784        2194
+  REGULAR + |    .4710892   .49927537        2231
+------------+------------------------------------
+      Total |   .48743083   .49988151        6325
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups      1.86190996      2   .930954982      3.73     0.0241
+ Within groups      1578.38884   6322   .249666062
+------------------------------------------------------------------------
+    Total           1580.25075   6324   .249881523
+
+Bartlett's test for equal variances:  chi2(2) =   0.0045  Prob>chi2 = 0.998
+
+. 
+. * Class size in kindergarten
+
+. tabulate gkclasst, sum(gkclasss)  
+
+  CLASSROOM |
+       TYPE |
+KINDERGARTE | Summary of CLASS SIZE KINDERGARTEN
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |       15.12        1.50        1900
+  REGULAR C |       22.38        2.15        2194
+  REGULAR + |       22.77        2.28        2231
+------------+------------------------------------
+      Total |       20.34        3.98        6325
+
+. oneway gkclasss gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE |
+KINDERGARTE | Summary of CLASS SIZE KINDERGARTEN
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |       15.12        1.50        1900
+  REGULAR C |       22.38        2.15        2194
+  REGULAR + |       22.77        2.28        2231
+------------+------------------------------------
+      Total |       20.34        3.98        6325
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups      74209.0299      2   37104.5149   9023.29     0.0000
+ Within groups      25996.5992   6322   4.11208466
+------------------------------------------------------------------------
+    Total           100205.629   6324   15.8452924
+
+Bartlett's test for equal variances:  chi2(2) = 370.5313  Prob>chi2 = 0.000
+
+. 
+. * Percentile score in kindergarten
+
+. tabulate gkclasst, sum(avg_score)
+
+  CLASSROOM |
+       TYPE |
+KINDERGARTE |        Summary of avg_score
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |   .54696499   .26979228        1771
+  REGULAR C |   .49919647   .27017381        2041
+  REGULAR + |   .49976783   .25713179        2089
+------------+------------------------------------
+      Total |   .51373496   .26635913        5901
+
+. oneway avg_score gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE |
+KINDERGARTE |        Summary of avg_score
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |   .54696499   .26979228        1771
+  REGULAR C |   .49919647   .27017381        2041
+  REGULAR + |   .49976783   .25713179        2089
+------------+------------------------------------
+      Total |   .51373496   .26635913        5901
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups      2.79452503      2   1.39726252     19.82     0.0000
+ Within groups      415.793864   5898   .070497434
+------------------------------------------------------------------------
+    Total           418.588389   5900   .070947185
+
+Bartlett's test for equal variances:  chi2(2) =   6.3691  Prob>chi2 = 0.041
+
+. 
+. * Missing school lunch
+
+. tabulate gkclasst lunch_present, row
+
++----------------+
+| Key            |
+|----------------|
+|   frequency    |
+| row percentage |
++----------------+
+
+                     |   Indicate whether
+                     |  free/reduced lunch
+      CLASSROOM TYPE |    data is present
+        KINDERGARTEN |   Missing    Present |     Total
+---------------------+----------------------+----------
+         SMALL CLASS |         8      1,892 |     1,900 
+                     |      0.42      99.58 |    100.00 
+---------------------+----------------------+----------
+       REGULAR CLASS |         7      2,187 |     2,194 
+                     |      0.32      99.68 |    100.00 
+---------------------+----------------------+----------
+REGULAR + AIDE CLASS |        10      2,221 |     2,231 
+                     |      0.45      99.55 |    100.00 
+---------------------+----------------------+----------
+               Total |        25      6,300 |     6,325 
+                     |      0.40      99.60 |    100.00 
+
+
+. oneway lunch_present gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE |     Summary of Indicate whether
+KINDERGARTE | free/reduced lunch data is present
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |   .99578947   .06476886        1900
+  REGULAR C |   .99680948   .05640736        2194
+  REGULAR + |   .99551771   .06681471        2231
+------------+------------------------------------
+      Total |   .99604743   .06275005        6325
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups      .002026568      2   .001013284      0.26     0.7732
+ Within groups      24.8991592   6322   .003938494
+------------------------------------------------------------------------
+    Total           24.9011858   6324   .003937569
+
+Bartlett's test for equal variances:  chi2(2) =  68.6490  Prob>chi2 = 0.000
+
+. 
+. 
+. *-------------
+
+. * Question 2
+
+. *-------------
+
+. * Model 1
+
+. foreach x in gktreads gktmaths gktlists gkwordsk {
+  2.   regress `x' i.gkclasst, cluster(gktchid)
+  3.   outreg2 using Problem2_`x', word se dec(2) title(OLS: Actual Class Size - `x') ctitle(1
+> ) addn("Standard errors corrected with Huber-White clustering for gktchid") replace
+  4. }
+
+Linear regression                                      Number of obs =    5789
+                                                       F(  2,   324) =    3.54
+                                                       Prob > F      =  0.0300
+                                                       R-squared     =  0.0063
+                                                       Root MSE      =  31.611
+
+                                       (Std. Err. adjusted for 325 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktreads |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   5.815138   2.420218     2.40   0.017     1.053812    10.57646
+REGULAR + AIDE CLASS  |   .6972468   2.481255     0.28   0.779    -4.184157    5.578651
+                      |
+                _cons |   434.7323   1.773184   245.17   0.000     431.2439    438.2207
+---------------------------------------------------------------------------------------
+Problem2_gktreads.rtf
+dir : seeout
+
+Linear regression                                      Number of obs =    5871
+                                                       F(  2,   324) =    3.16
+                                                       Prob > F      =  0.0438
+                                                       R-squared     =  0.0058
+                                                       Root MSE      =  47.567
+
+                                       (Std. Err. adjusted for 325 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktmaths |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   7.732017   3.756871     2.06   0.040     .3410777    15.12296
+REGULAR + AIDE CLASS  |  -.4034516   3.865048    -0.10   0.917     -8.00721    7.200306
+                      |
+                _cons |   483.1993   2.799415   172.61   0.000      477.692    488.7066
+---------------------------------------------------------------------------------------
+Problem2_gktmaths.rtf
+dir : seeout
+
+Linear regression                                      Number of obs =    5837
+                                                       F(  2,   324) =    1.71
+                                                       Prob > F      =  0.1826
+                                                       R-squared     =  0.0028
+                                                       Root MSE      =    33.1
+
+                                       (Std. Err. adjusted for 325 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktlists |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   2.478973   2.415642     1.03   0.306     -2.27335    7.231296
+REGULAR + AIDE CLASS  |  -1.833712   2.541695    -0.72   0.471     -6.83402    3.166597
+                      |
+                _cons |   537.3778   1.836536   292.60   0.000     533.7648    540.9909
+---------------------------------------------------------------------------------------
+Problem2_gktlists.rtf
+dir : seeout
+
+Linear regression                                      Number of obs =    5851
+                                                       F(  2,   324) =    3.11
+                                                       Prob > F      =  0.0458
+                                                       R-squared     =  0.0051
+                                                       Root MSE      =  36.671
+
+                                       (Std. Err. adjusted for 325 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gkwordsk |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   6.191436   2.712675     2.28   0.023     .8547567    11.52812
+REGULAR + AIDE CLASS  |   1.067337   2.753075     0.39   0.699    -4.348823    6.483498
+                      |
+                _cons |   431.9447   2.010351   214.86   0.000     427.9898    435.8997
+---------------------------------------------------------------------------------------
+Problem2_gkwordsk.rtf
+dir : seeout
+
+. 
+. * Model 2
+
+. foreach x in gktreads gktmaths gktlists gkwordsk {
+  2.   xtreg `x' i.gkclasst, i(gkschid) fe cluster(gktchid) nonest
+  3.   outreg2 using Problem2_`x', word se dec(2) title(OLS: Actual Class Size - `x') ctitle(2
+> ) append
+  4. }
+
+Fixed-effects (within) regression               Number of obs      =      5789
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0095                         Obs per group: min =        34
+       between = 0.0101                                        avg =      73.3
+       overall = 0.0063                                        max =       137
+
+                                                F(2,324)           =     10.74
+corr(u_i, Xb)  = -0.0198                        Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 325 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktreads |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   6.570069     1.5036     4.37   0.000     3.612018    9.528121
+REGULAR + AIDE CLASS  |   1.054342   1.336583     0.79   0.431    -1.575135    3.683818
+                      |
+                _cons |   434.3794   .9543944   455.14   0.000     432.5018     436.257
+----------------------+----------------------------------------------------------------
+              sigma_u |  14.677874
+              sigma_e |  28.364169
+                  rho |   .2112227   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem2_gktreads.rtf
+dir : seeout
+
+Fixed-effects (within) regression               Number of obs      =      5871
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0088                         Obs per group: min =        34
+       between = 0.0059                                        avg =      74.3
+       overall = 0.0058                                        max =       138
+
+                                                F(2,324)           =      9.18
+corr(u_i, Xb)  = -0.0184                        Prob > F           =    0.0001
+
+                                       (Std. Err. adjusted for 325 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktmaths |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   8.932122   2.381607     3.75   0.000     4.246757    13.61749
+REGULAR + AIDE CLASS  |   .2757082   2.178275     0.13   0.899    -4.009641    4.561057
+                      |
+                _cons |   482.5989   1.573074   306.79   0.000     479.5041    485.6936
+----------------------+----------------------------------------------------------------
+              sigma_u |  22.050948
+              sigma_e |  42.555524
+                  rho |  .21166669   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem2_gktmaths.rtf
+dir : seeout
+
+Fixed-effects (within) regression               Number of obs      =      5837
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0029                         Obs per group: min =        33
+       between = 0.0010                                        avg =      73.9
+       overall = 0.0026                                        max =       139
+
+                                                F(2,324)           =      4.19
+corr(u_i, Xb)  = 0.0030                         Prob > F           =    0.0159
+
+                                       (Std. Err. adjusted for 325 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktlists |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   3.117619   1.489117     2.09   0.037     .1880606    6.047178
+REGULAR + AIDE CLASS  |  -.7630819   1.365482    -0.56   0.577    -3.449413    1.923249
+                      |
+                _cons |   536.8078   1.043507   514.43   0.000     534.7549    538.8607
+----------------------+----------------------------------------------------------------
+              sigma_u |  14.128256
+              sigma_e |  30.027559
+                  rho |  .18125354   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem2_gktlists.rtf
+dir : seeout
+
+Fixed-effects (within) regression               Number of obs      =      5851
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0077                         Obs per group: min =        34
+       between = 0.0117                                        avg =      74.1
+       overall = 0.0051                                        max =       139
+
+                                                F(2,324)           =      9.92
+corr(u_i, Xb)  = -0.0210                        Prob > F           =    0.0001
+
+                                       (Std. Err. adjusted for 325 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gkwordsk |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   7.035991   1.661215     4.24   0.000     3.767862    10.30412
+REGULAR + AIDE CLASS  |   1.399165   1.518765     0.92   0.358    -1.588721    4.387051
+                      |
+                _cons |   431.5741   1.098051   393.04   0.000     429.4139    433.7343
+----------------------+----------------------------------------------------------------
+              sigma_u |  15.940444
+              sigma_e |  33.338435
+                  rho |  .18607736   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem2_gkwordsk.rtf
+dir : seeout
+
+. 
+. * Model 3
+
+. foreach x in gktreads gktmaths gktlists gkwordsk {
+  2.   xtreg `x' i.gkclasst st_whiteasian st_girl freelunch, i(gkschid) fe cluster(gktchid) no
+> nest
+  3.   outreg2 using Problem2_`x', word se dec(2) title(OLS: Actual Class Size - `x') ctitle(3
+> ) append
+  4. }
+
+Fixed-effects (within) regression               Number of obs      =      5770
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0753                         Obs per group: min =        34
+       between = 0.1394                                        avg =      73.0
+       overall = 0.0874                                        max =       136
+
+                                                F(5,324)           =     75.07
+corr(u_i, Xb)  = -0.0698                        Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 325 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktreads |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   6.572072   1.461945     4.50   0.000     3.695968    9.448176
+REGULAR + AIDE CLASS  |   1.266879   1.310835     0.97   0.335    -1.311944    3.845701
+                      |
+        st_whiteasian |   7.796472   1.603893     4.86   0.000     4.641113    10.95183
+              st_girl |   5.458747   .7733943     7.06   0.000     3.937239    6.980256
+            freelunch |  -14.74406   .9062742   -16.27   0.000    -16.52699   -12.96114
+                _cons |   433.4874   1.559405   277.98   0.000     430.4196    436.5552
+----------------------+----------------------------------------------------------------
+              sigma_u |   13.62492
+              sigma_e |  27.435002
+                  rho |  .19784177   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem2_gktreads.rtf
+dir : seeout
+
+Fixed-effects (within) regression               Number of obs      =      5852
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0695                         Obs per group: min =        34
+       between = 0.0980                                        avg =      74.1
+       overall = 0.0739                                        max =       137
+
+                                                F(5,324)           =     69.81
+corr(u_i, Xb)  = -0.1514                        Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 325 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktmaths |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   9.006171   2.333845     3.86   0.000     4.414768    13.59757
+REGULAR + AIDE CLASS  |   .6252633   2.146595     0.29   0.771     -3.59776    4.848286
+                      |
+        st_whiteasian |   16.81846   2.383564     7.06   0.000     12.12924    21.50768
+              st_girl |   6.529728   1.121983     5.82   0.000     4.322437    8.737019
+            freelunch |  -20.15003   1.319996   -15.27   0.000    -22.74687   -17.55318
+                _cons |   477.6308   2.367907   201.71   0.000     472.9724    482.2893
+----------------------+----------------------------------------------------------------
+              sigma_u |  21.368207
+              sigma_e |   41.26985
+                  rho |   .2114085   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem2_gktmaths.rtf
+dir : seeout
+
+Fixed-effects (within) regression               Number of obs      =      5818
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0819                         Obs per group: min =        33
+       between = 0.4833                                        avg =      73.6
+       overall = 0.1611                                        max =       138
+
+                                                F(5,324)           =    102.01
+corr(u_i, Xb)  = -0.0464                        Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 325 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktlists |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   3.205045   1.446592     2.22   0.027     .3591448    6.050944
+REGULAR + AIDE CLASS  |   -.438959   1.319766    -0.33   0.740    -3.035351    2.157433
+                      |
+        st_whiteasian |   17.83569   1.696606    10.51   0.000     14.49794    21.17345
+              st_girl |   2.657191   .7423432     3.58   0.000      1.19677    4.117613
+            freelunch |  -15.27111   .8999288   -16.97   0.000    -17.04155   -13.50067
+                _cons |     530.69   1.641036   323.39   0.000     527.4616    533.9184
+----------------------+----------------------------------------------------------------
+              sigma_u |  10.178591
+              sigma_e |   28.83199
+                  rho |  .11081947   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem2_gktlists.rtf
+dir : seeout
+
+Fixed-effects (within) regression               Number of obs      =      5832
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0598                         Obs per group: min =        34
+       between = 0.1879                                        avg =      73.8
+       overall = 0.0827                                        max =       138
+
+                                                F(5,324)           =     63.13
+corr(u_i, Xb)  = -0.0047                        Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 325 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gkwordsk |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |    7.09134   1.623152     4.37   0.000     3.898092    10.28459
+REGULAR + AIDE CLASS  |   1.666623   1.496361     1.11   0.266    -1.277188    4.610435
+                      |
+        st_whiteasian |   7.045653   1.909797     3.69   0.000     3.288484    10.80282
+              st_girl |   5.068749   .9352004     5.42   0.000     3.228917    6.908581
+            freelunch |   -15.9978    1.07406   -14.89   0.000    -18.11081   -13.88479
+                _cons |   431.9532     1.8743   230.46   0.000     428.2658    435.6405
+----------------------+----------------------------------------------------------------
+              sigma_u |  14.320821
+              sigma_e |  32.484038
+                  rho |  .16272803   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem2_gkwordsk.rtf
+dir : seeout
+
+. 
+. * Model 4
+
+. foreach x in gktreads gktmaths gktlists gkwordsk {
+  2.   xtreg `x' i.gkclasst st_whiteasian st_girl freelunch t_whiteasian gktyears teacher_MA, 
+> i(gkschid) fe cluster(gktchid) nonest
+  3.   outreg2 using Problem2_`x', word se dec(2) title(OLS: Actual Class Size - `x') ctitle(4
+> ) append
+  4. }
+
+Fixed-effects (within) regression               Number of obs      =      5728
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0779                         Obs per group: min =        34
+       between = 0.1640                                        avg =      72.5
+       overall = 0.0950                                        max =       136
+
+                                                F(8,322)           =     46.70
+corr(u_i, Xb)  = -0.0543                        Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 323 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktreads |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   6.466105   1.453538     4.45   0.000     3.606474    9.325736
+REGULAR + AIDE CLASS  |   .9970406   1.260803     0.79   0.430    -1.483412    3.477493
+                      |
+        st_whiteasian |   7.848193   1.614831     4.86   0.000     4.671242    11.02514
+              st_girl |   5.394995   .7792914     6.92   0.000     3.861849     6.92814
+            freelunch |  -14.68681   .9073266   -16.19   0.000    -16.47184   -12.90177
+         t_whiteasian |  -.5647264   2.664336    -0.21   0.832    -5.806431    4.676978
+             gktyears |   .2955908   .1245168     2.37   0.018     .0506216    .5405599
+           teacher_MA |  -.7537502   1.248038    -0.60   0.546    -3.209088    1.701587
+                _cons |   431.6866    3.11869   138.42   0.000      425.551    437.8221
+----------------------+----------------------------------------------------------------
+              sigma_u |  13.387262
+              sigma_e |  27.456478
+                  rho |  .19207288   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem2_gktreads.rtf
+dir : seeout
+
+Fixed-effects (within) regression               Number of obs      =      5809
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0724                         Obs per group: min =        34
+       between = 0.1142                                        avg =      73.5
+       overall = 0.0807                                        max =       137
+
+                                                F(8,322)           =     44.44
+corr(u_i, Xb)  = -0.1345                        Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 323 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktmaths |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   8.843524    2.31681     3.82   0.000     4.285528    13.40152
+REGULAR + AIDE CLASS  |   .4178233    2.13589     0.20   0.845    -3.784239    4.619885
+                      |
+        st_whiteasian |   16.90943   2.397346     7.05   0.000     12.19299    21.62587
+              st_girl |   6.463233   1.124714     5.75   0.000     4.250516    8.675949
+            freelunch |  -20.07922   1.331491   -15.08   0.000    -22.69874    -17.4597
+         t_whiteasian |  -1.012389   3.803147    -0.27   0.790    -8.494543    6.469765
+             gktyears |   .4248088   .2025242     2.10   0.037      .026371    .8232466
+           teacher_MA |  -2.204552    2.07981    -1.06   0.290    -6.296285    1.887181
+                _cons |   475.5241   4.490624   105.89   0.000     466.6894    484.3587
+----------------------+----------------------------------------------------------------
+              sigma_u |  21.106913
+              sigma_e |  41.207807
+                  rho |  .20783022   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem2_gktmaths.rtf
+dir : seeout
+
+Fixed-effects (within) regression               Number of obs      =      5776
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0854                         Obs per group: min =        33
+       between = 0.5045                                        avg =      73.1
+       overall = 0.1696                                        max =       138
+
+                                                F(8,322)           =     63.80
+corr(u_i, Xb)  = 0.0011                         Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 323 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktlists |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   3.244434   1.423539     2.28   0.023     .4438228    6.045045
+REGULAR + AIDE CLASS  |  -.5799787   1.320179    -0.44   0.661    -3.177244    2.017287
+                      |
+        st_whiteasian |   17.97946   1.699321    10.58   0.000     14.63628    21.32263
+              st_girl |   2.669595   .7377825     3.62   0.000     1.218112    4.121077
+            freelunch |  -15.22524   .9049143   -16.83   0.000    -17.00553   -13.44495
+         t_whiteasian |  -3.682358   2.588122    -1.42   0.156    -8.774122    1.409407
+             gktyears |   .2529612   .1503388     1.68   0.093    -.0428091    .5487314
+           teacher_MA |   .4996817   1.241046     0.40   0.687    -1.941901    2.941264
+                _cons |   531.2813     2.8449   186.75   0.000     525.6844    536.8783
+----------------------+----------------------------------------------------------------
+              sigma_u |  9.9558042
+              sigma_e |  28.805567
+                  rho |  .10670719   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem2_gktlists.rtf
+dir : seeout
+
+Fixed-effects (within) regression               Number of obs      =      5790
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0621                         Obs per group: min =        34
+       between = 0.2098                                        avg =      73.3
+       overall = 0.0881                                        max =       138
+
+                                                F(8,322)           =     39.79
+corr(u_i, Xb)  = -0.0053                        Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 323 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gkwordsk |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   6.986599   1.602934     4.36   0.000     3.833053    10.14014
+REGULAR + AIDE CLASS  |   1.274206   1.420198     0.90   0.370    -1.519832    4.068244
+                      |
+        st_whiteasian |   7.078599    1.91128     3.70   0.000     3.318426    10.83877
+              st_girl |   5.027456   .9358899     5.37   0.000     3.186225    6.868687
+            freelunch |  -15.97425   1.069305   -14.94   0.000    -18.07796   -13.87054
+         t_whiteasian |   .4601814    3.06545     0.15   0.881    -5.570659    6.491022
+             gktyears |   .2999332   .1372702     2.18   0.030     .0298736    .5699929
+           teacher_MA |   .2420604   1.459498     0.17   0.868    -2.629295    3.113416
+                _cons |   428.9659   3.591395   119.44   0.000     421.9004    436.0315
+----------------------+----------------------------------------------------------------
+              sigma_u |  14.107468
+              sigma_e |  32.505278
+                  rho |  .15850468   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem2_gkwordsk.rtf
+dir : seeout
+
+. 
+. * Combined table of final model for each subject test
+
+. foreach x in gktreads gktmaths gktlists gkwordsk {
+  2.   xtreg `x' i.gkclasst st_whiteasian st_girl freelunch t_whiteasian gktyears teacher_MA, 
+> i(gkschid) fe cluster(gktchid) nonest
+  3.   outreg2 using Combined, word se dec(2) title(OLS: Actual Class Size - All four tests) c
+> title(`x') append
+  4. }
+
+Fixed-effects (within) regression               Number of obs      =      5728
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0779                         Obs per group: min =        34
+       between = 0.1640                                        avg =      72.5
+       overall = 0.0950                                        max =       136
+
+                                                F(8,322)           =     46.70
+corr(u_i, Xb)  = -0.0543                        Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 323 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktreads |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   6.466105   1.453538     4.45   0.000     3.606474    9.325736
+REGULAR + AIDE CLASS  |   .9970406   1.260803     0.79   0.430    -1.483412    3.477493
+                      |
+        st_whiteasian |   7.848193   1.614831     4.86   0.000     4.671242    11.02514
+              st_girl |   5.394995   .7792914     6.92   0.000     3.861849     6.92814
+            freelunch |  -14.68681   .9073266   -16.19   0.000    -16.47184   -12.90177
+         t_whiteasian |  -.5647264   2.664336    -0.21   0.832    -5.806431    4.676978
+             gktyears |   .2955908   .1245168     2.37   0.018     .0506216    .5405599
+           teacher_MA |  -.7537502   1.248038    -0.60   0.546    -3.209088    1.701587
+                _cons |   431.6866    3.11869   138.42   0.000      425.551    437.8221
+----------------------+----------------------------------------------------------------
+              sigma_u |  13.387262
+              sigma_e |  27.456478
+                  rho |  .19207288   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Combined.rtf
+dir : seeout
+
+Fixed-effects (within) regression               Number of obs      =      5809
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0724                         Obs per group: min =        34
+       between = 0.1142                                        avg =      73.5
+       overall = 0.0807                                        max =       137
+
+                                                F(8,322)           =     44.44
+corr(u_i, Xb)  = -0.1345                        Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 323 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktmaths |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   8.843524    2.31681     3.82   0.000     4.285528    13.40152
+REGULAR + AIDE CLASS  |   .4178233    2.13589     0.20   0.845    -3.784239    4.619885
+                      |
+        st_whiteasian |   16.90943   2.397346     7.05   0.000     12.19299    21.62587
+              st_girl |   6.463233   1.124714     5.75   0.000     4.250516    8.675949
+            freelunch |  -20.07922   1.331491   -15.08   0.000    -22.69874    -17.4597
+         t_whiteasian |  -1.012389   3.803147    -0.27   0.790    -8.494543    6.469765
+             gktyears |   .4248088   .2025242     2.10   0.037      .026371    .8232466
+           teacher_MA |  -2.204552    2.07981    -1.06   0.290    -6.296285    1.887181
+                _cons |   475.5241   4.490624   105.89   0.000     466.6894    484.3587
+----------------------+----------------------------------------------------------------
+              sigma_u |  21.106913
+              sigma_e |  41.207807
+                  rho |  .20783022   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Combined.rtf
+dir : seeout
+
+Fixed-effects (within) regression               Number of obs      =      5776
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0854                         Obs per group: min =        33
+       between = 0.5045                                        avg =      73.1
+       overall = 0.1696                                        max =       138
+
+                                                F(8,322)           =     63.80
+corr(u_i, Xb)  = 0.0011                         Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 323 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktlists |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   3.244434   1.423539     2.28   0.023     .4438228    6.045045
+REGULAR + AIDE CLASS  |  -.5799787   1.320179    -0.44   0.661    -3.177244    2.017287
+                      |
+        st_whiteasian |   17.97946   1.699321    10.58   0.000     14.63628    21.32263
+              st_girl |   2.669595   .7377825     3.62   0.000     1.218112    4.121077
+            freelunch |  -15.22524   .9049143   -16.83   0.000    -17.00553   -13.44495
+         t_whiteasian |  -3.682358   2.588122    -1.42   0.156    -8.774122    1.409407
+             gktyears |   .2529612   .1503388     1.68   0.093    -.0428091    .5487314
+           teacher_MA |   .4996817   1.241046     0.40   0.687    -1.941901    2.941264
+                _cons |   531.2813     2.8449   186.75   0.000     525.6844    536.8783
+----------------------+----------------------------------------------------------------
+              sigma_u |  9.9558042
+              sigma_e |  28.805567
+                  rho |  .10670719   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Combined.rtf
+dir : seeout
+
+Fixed-effects (within) regression               Number of obs      =      5790
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0621                         Obs per group: min =        34
+       between = 0.2098                                        avg =      73.3
+       overall = 0.0881                                        max =       138
+
+                                                F(8,322)           =     39.79
+corr(u_i, Xb)  = -0.0053                        Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 323 clusters in gktchid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gkwordsk |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   6.986599   1.602934     4.36   0.000     3.833053    10.14014
+REGULAR + AIDE CLASS  |   1.274206   1.420198     0.90   0.370    -1.519832    4.068244
+                      |
+        st_whiteasian |   7.078599    1.91128     3.70   0.000     3.318426    10.83877
+              st_girl |   5.027456   .9358899     5.37   0.000     3.186225    6.868687
+            freelunch |  -15.97425   1.069305   -14.94   0.000    -18.07796   -13.87054
+         t_whiteasian |   .4601814    3.06545     0.15   0.881    -5.570659    6.491022
+             gktyears |   .2999332   .1372702     2.18   0.030     .0298736    .5699929
+           teacher_MA |   .2420604   1.459498     0.17   0.868    -2.629295    3.113416
+                _cons |   428.9659   3.591395   119.44   0.000     421.9004    436.0315
+----------------------+----------------------------------------------------------------
+              sigma_u |  14.107468
+              sigma_e |  32.505278
+                  rho |  .15850468   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Combined.rtf
+dir : seeout
+
+. 
+. 
+. *-------------
+
+. * Question 3
+
+. *-------------
+
+. *---------
+
+. * Part a
+
+. xtreg g8tmaths i.gkclasst st_whiteasian st_girl freelunch, i(gkschid) fe vce(cluster g8schid
+> ) nonest
+
+Fixed-effects (within) regression               Number of obs      =      3444
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0399                         Obs per group: min =        15
+       between = 0.5189                                        avg =      43.6
+       overall = 0.1031                                        max =        90
+
+                                                F(5,320)           =     27.58
+corr(u_i, Xb)  = 0.1155                         Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 321 clusters in g8schid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             g8tmaths |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   1.169446   1.816768     0.64   0.520    -2.404873    4.743764
+REGULAR + AIDE CLASS  |   .2591272   1.673635     0.15   0.877    -3.033591    3.551846
+                      |
+        st_whiteasian |   16.09219    3.54339     4.54   0.000     9.120906    23.06347
+              st_girl |   3.533788   1.456719     2.43   0.016     .6678316    6.399745
+            freelunch |   -17.3057   1.935519    -8.94   0.000    -21.11365   -13.49775
+                _cons |   784.4582   3.165632   247.80   0.000     778.2301    790.6863
+----------------------+----------------------------------------------------------------
+              sigma_u |  12.127478
+              sigma_e |  42.330707
+                  rho |  .07585272   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+
+. outreg2 using Problem3A, word se dec(2) title(OLS: Actual Class Size) ctitle(1) replace
+Problem3A.rtf
+dir : seeout
+
+. 
+. * Check if attrition is equal across class types
+
+. * Missing 8th grade data
+
+. recode g8tmaths (nonmissing = 1 "Present") (missing = 0 "Missing"), gen(g8maths_present)
+(11601 differences between g8tmaths and g8maths_present)
+
+. label var g8maths_present "Indicate whether 8th grade math test data is present"
+
+. oneway g8maths_present gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE |   Summary of Indicate whether 8th
+KINDERGARTE |   grade math test data is present
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |   .54684211   .49793203        1900
+  REGULAR C |   .54876937   .49772931        2194
+  REGULAR + |   .54280592   .49827597        2231
+------------+------------------------------------
+      Total |   .54608696   .49791082        6325
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups      .040887279      2   .020443639      0.08     0.9209
+ Within groups      1567.77476   6322    .24798715
+------------------------------------------------------------------------
+    Total           1567.81565   6324   .247915189
+
+Bartlett's test for equal variances:  chi2(2) =   0.0027  Prob>chi2 = 0.999
+
+. 
+. 
+. *---------
+
+. * Part b
+
+. * Imputation
+
+. mi set wide
+
+. mi register imputed g8tmaths
+
+. mi impute regress g8tmaths st_whiteasian st_girl freelunch, add(1) rseed(1234) force
+
+Univariate imputation                       Imputations =        1
+Linear regression                                 added =        1
+Imputed: m=1                                    updated =        0
+
+------------------------------------------------------------------
+                   |               Observations per m             
+                   |----------------------------------------------
+          Variable |   Complete   Incomplete   Imputed |     Total
+-------------------+-----------------------------------+----------
+          g8tmaths |       6213         5388      2855 |     11601
+------------------------------------------------------------------
+(complete + incomplete = total; imputed is the minimum across m
+ of the number of filled-in observations.)
+
+Note: right-hand-side variables (or weights) have missing values;
+      model parameters estimated using listwise deletion
+
+. 
+. * Indicator variable for imputed values
+
+. gen imputed = 0
+
+. replace imputed = 1 if g8tmaths != _1_g8tmaths
+(2855 real changes made)
+
+. label var imputed "Math score was imputed" 
+
+. 
+. * Save imputed column to dataset
+
+. mi set, clear 
+
+            variables
+    original          new                meaning
+    -----------------------------------------------------------------------
+    _mi_miss          mi_miss            0=orig-complete, 1=orig-incomplete
+    _#_g8tmaths       g8tmaths_#_        imputed values of g8tmaths
+    -----------------------------------------------------------------------
+    # = 1
+
+. 
+. * Regression!
+
+. xtreg g8tmaths_1_ i.gkclasst st_whiteasian st_girl freelunch imputed, i(g8schid) fe vce(clus
+> ter g8schid) nonest
+warning: existing panel variable is not g8schid
+
+Fixed-effects (within) regression               Number of obs      =      3596
+Group variable: g8schid                         Number of groups   =       323
+
+R-sq:  within  = 0.0378                         Obs per group: min =         1
+       between = 0.1456                                        avg =      11.1
+       overall = 0.1004                                        max =        96
+
+                                                F(6,322)           =     24.35
+corr(u_i, Xb)  = 0.1394                         Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 323 clusters in g8schid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+          g8tmaths_1_ |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   1.614823     1.7807     0.91   0.365    -1.888452    5.118099
+REGULAR + AIDE CLASS  |  -.9259031   1.633458    -0.57   0.571      -4.1395    2.287694
+                      |
+        st_whiteasian |   15.11851   3.242943     4.66   0.000     8.738477    21.49854
+              st_girl |    4.17793   1.367445     3.06   0.002     1.487676    6.868185
+            freelunch |  -14.18931   1.784985    -7.95   0.000    -17.70101    -10.6776
+              imputed |   4.672936    4.42045     1.06   0.291    -4.023674    13.36955
+                _cons |   783.7756   2.856174   274.41   0.000     778.1565    789.3948
+----------------------+----------------------------------------------------------------
+              sigma_u |  35.395489
+              sigma_e |    40.9797
+                  rho |  .42727328   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+
+. outreg2 using Problem3B, word se dec(2) title(OLS: Actual Class Size) ctitle(1) replace
+Problem3B.rtf
+dir : seeout
+
+. 
+. 
+. *---------
+
+. * Part c
+
+. * Get median, min, and max from summary information
+
+. format g8tmaths %4.2f
+
+. 
+. quietly centile(gktmaths)
+
+. generate median_math_k = r(c_1)
+
+. 
+. quietly summ g8tmaths, d
+
+. generate min_math_8 = r(min)
+
+. generate max_math_8 = r(max)
+
+. 
+. * Indicator variable to mark imputation
+
+. generate attritor_math_8 = (g8tmaths == .)
+
+. label var attritor_math_8 "Math score was imputed"
+
+. 
+. * Max 8th grade score for those above the kindergarten median; min 8th grade score for those
+>  below the kindergarten median
+
+. generate attr_math_8_score = max_math_8 if gktmaths >= median_math_k & attritor_math_8 == 1
+(7928 missing values generated)
+
+. replace attr_math_8_score = min_math_8 if gktmaths < median_math_k & attritor_math_8 == 1
+(1715 real changes made)
+
+. 
+. * Combine scores
+
+. generate adjusted_math_8 = g8tmaths
+(5388 missing values generated)
+
+. replace adjusted_math_8 = attr_math_8_score if attr_math_8_score != .
+(5388 real changes made)
+
+. label var adjusted_math_8 "8th grade math scores with extreme imputations"
+
+. 
+. * Look at differences in medians
+
+. centile(adjusted_math_8)
+
+                                                       -- Binom. Interp. --
+    Variable |     Obs  Percentile      Centile        [95% Conf. Interval]
+-------------+-------------------------------------------------------------
+adjusted_m~8 |   11601         50           800             798         803
+
+. centile(g8tmaths)
+
+                                                       -- Binom. Interp. --
+    Variable |     Obs  Percentile      Centile        [95% Conf. Interval]
+-------------+-------------------------------------------------------------
+    g8tmaths |    6213         50        783.00          781.00      784.00
+
+. local orig_median = r(c_1)
+
+. 
+. signrank adjusted_math_8 = `orig_median'
+
+Wilcoxon signed-rank test
+
+        sign |      obs   sum ranks    expected
+-------------+---------------------------------
+    positive |     6737    38949850    33647874
+    negative |     4807    28345898    33647874
+        zero |       57        1653        1653
+-------------+---------------------------------
+         all |    11601    67297401    67297401
+
+unadjusted variance   1.301e+11
+adjustment for ties  -1.169e+09
+adjustment for zeros  -15841.25
+                     ----------
+adjusted variance     1.290e+11
+
+Ho: adjusted_math_8 = 783
+             z =  14.764
+    Prob > |z| =   0.0000
+
+. 
+. * Do the differences between treatment groups grow or shrink after imputation?
+
+. oneway adjusted_math_8 gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE |  Summary of 8th grade math scores
+KINDERGARTE |      with extreme imputations
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |   761.92526   125.86928        1900
+  REGULAR C |   752.10392   125.96033        2194
+  REGULAR + |   753.40385   126.62621        2231
+------------+------------------------------------
+      Total |   755.51273   126.21951        6325
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups      113545.405      2   56772.7025      3.57     0.0283
+ Within groups       100636407   6322   15918.4446
+------------------------------------------------------------------------
+    Total            100749952   6324    15931.365
+
+Bartlett's test for equal variances:  chi2(2) =   0.0919  Prob>chi2 = 0.955
+
+. oneway g8tmaths gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE |  Summary of TOTAL MATH SCALE SCORE
+KINDERGARTE |            CTBS GRADE 8
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |      793.04       46.05        1039
+  REGULAR C |      790.94       45.32        1204
+  REGULAR + |      790.96       45.90        1211
+------------+------------------------------------
+      Total |      791.58       45.74        3454
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups      3173.04288      2   1586.52144      0.76     0.4686
+ Within groups      7220872.24   3451   2092.39995
+------------------------------------------------------------------------
+    Total           7224045.29   3453   2092.10695
+
+Bartlett's test for equal variances:  chi2(2) =   0.3241  Prob>chi2 = 0.850
+
+. 
+. xtreg adjusted_math_8 i.gkclasst st_whiteasian st_girl freelunch attritor_math_8, i(g8schid)
+>  fe vce(cluster g8schid) nonest
+
+Fixed-effects (within) regression               Number of obs      =      3596
+Group variable: g8schid                         Number of groups   =       323
+
+R-sq:  within  = 0.0449                         Obs per group: min =         1
+       between = 0.1362                                        avg =      11.1
+       overall = 0.0857                                        max =        96
+
+                                                F(6,322)           =     13.80
+corr(u_i, Xb)  = 0.0813                         Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 323 clusters in g8schid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+      adjusted_math_8 |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   .2223705   2.588994     0.09   0.932    -4.871108     5.31585
+REGULAR + AIDE CLASS  |  -.1673718   2.365405    -0.07   0.944    -4.820972    4.486228
+                      |
+        st_whiteasian |   17.10591   4.486895     3.81   0.000      8.27858    25.93324
+              st_girl |   4.228704   1.696784     2.49   0.013     .8905217    7.566887
+            freelunch |  -15.04624   2.398606    -6.27   0.000    -19.76516   -10.32732
+      attritor_math_8 |  -35.82758   14.09862    -2.54   0.012    -63.56462   -8.090543
+                _cons |   782.8545    3.96125   197.63   0.000     775.0613    790.6477
+----------------------+----------------------------------------------------------------
+              sigma_u |  40.815457
+              sigma_e |   53.57007
+                  rho |  .36729026   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+
+. outreg2 using Problem3C, word se dec(2) title(OLS: Actual Class Size) ctitle(1) replace
+Problem3C.rtf
+dir : seeout
+
+. 
+. 
+. *---------
+
+. * Part d
+
+. * Do parts a and b for reading, science, and social science test scores
+
+. * For some reason Stata complains about this...
+
+. rename g8tmaths_1_ g8tmaths_stata
+
+. 
+. * Loop!
+
+. foreach x of varlist g8treads g8scienc g8social {
+  2.   * Part a
+.   xtreg `x' i.gkclasst st_whiteasian st_girl freelunch, i(gkschid) fe vce(cluster g8schid) n
+> onest
+  3.   outreg2 using Problem3D_`x', word se dec(2) title(OLS: Actual Class Size) ctitle(1) rep
+> lace
+  4. 
+.   * Part b
+.   * Imputation
+.   mi set wide
+  5.   mi register imputed `x'
+  6.   mi impute regress `x' st_whiteasian st_girl freelunch, add(1) rseed(1234) force
+  7. 
+.   * Indicator variable for imputed values
+.   gen imputed_`x' = 0
+  8.   replace imputed_`x' = 1 if `x' != _1_`x'
+  9.   label var imputed_`x' "Score was imputed" 
+ 10. 
+.   * Save imputed column to dataset
+.   mi set, clear 
+ 11. 
+.   * Regression!
+.   xtreg `x'_1_ i.gkclasst st_whiteasian st_girl freelunch imputed, i(g8schid) fe vce(cluster
+>  g8schid) nonest
+ 12.   outreg2 using Problem3D2_`x', word se dec(2) title(OLS: Actual Class Size) ctitle(1) re
+> place
+ 13. 
+.   rename `x'_1_ `x'_stata
+ 14. }
+warning: existing panel variable is not gkschid
+
+Fixed-effects (within) regression               Number of obs      =      3460
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0551                         Obs per group: min =        15
+       between = 0.6969                                        avg =      43.8
+       overall = 0.1367                                        max =        89
+
+                                                F(5,321)           =     36.77
+corr(u_i, Xb)  = 0.0639                         Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 322 clusters in g8schid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             g8treads |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   2.619415   1.588203     1.65   0.100     -.505187    5.744018
+REGULAR + AIDE CLASS  |  -.8322647   1.414063    -0.59   0.557    -3.614266    1.949737
+                      |
+        st_whiteasian |   19.32213   2.882793     6.70   0.000     13.65057    24.99368
+              st_girl |   1.960643   1.415398     1.39   0.167    -.8239856    4.745271
+            freelunch |  -17.66434   1.720694   -10.27   0.000     -21.0496   -14.27908
+                _cons |   757.2287   2.696975   280.77   0.000     751.9227    762.5347
+----------------------+----------------------------------------------------------------
+              sigma_u |  8.3131272
+              sigma_e |  38.067216
+                  rho |  .04551912   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem3D_g8treads.rtf
+dir : seeout
+
+Univariate imputation                       Imputations =        1
+Linear regression                                 added =        1
+Imputed: m=1                                    updated =        0
+
+------------------------------------------------------------------
+                   |               Observations per m             
+                   |----------------------------------------------
+          Variable |   Complete   Incomplete   Imputed |     Total
+-------------------+-----------------------------------+----------
+          g8treads |       6224         5377      2839 |     11601
+------------------------------------------------------------------
+(complete + incomplete = total; imputed is the minimum across m
+ of the number of filled-in observations.)
+
+Note: right-hand-side variables (or weights) have missing values;
+      model parameters estimated using listwise deletion
+(2839 real changes made)
+
+            variables
+    original          new                meaning
+    -----------------------------------------------------------------------
+    _mi_miss          mi_miss1           0=orig-complete, 1=orig-incomplete
+    _#_g8treads       g8treads_#_        imputed values of g8treads
+    -----------------------------------------------------------------------
+    # = 1
+warning: existing panel variable is not g8schid
+
+Fixed-effects (within) regression               Number of obs      =      3596
+Group variable: g8schid                         Number of groups   =       323
+
+R-sq:  within  = 0.0533                         Obs per group: min =         1
+       between = 0.1930                                        avg =      11.1
+       overall = 0.1360                                        max =        96
+
+                                                F(6,322)           =     31.09
+corr(u_i, Xb)  = 0.1197                         Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 323 clusters in g8schid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+          g8treads_1_ |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |    3.26419   1.480219     2.21   0.028     .3520679    6.176311
+REGULAR + AIDE CLASS  |  -.5248828   1.457775    -0.36   0.719    -3.392848    2.343083
+                      |
+        st_whiteasian |   19.13774   2.819845     6.79   0.000      13.5901    24.68539
+              st_girl |   2.940665     1.4508     2.03   0.043     .0864213    5.794908
+            freelunch |  -14.14446   1.719674    -8.23   0.000    -17.52768   -10.76125
+              imputed |   -.229071   3.781478    -0.06   0.952    -7.668594    7.210452
+                _cons |   755.2359    2.64986   285.01   0.000     750.0227    760.4492
+----------------------+----------------------------------------------------------------
+              sigma_u |  31.411386
+              sigma_e |    37.0455
+                  rho |  .41825208   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem3D2_g8treads.rtf
+dir : seeout
+warning: existing panel variable is not gkschid
+
+Fixed-effects (within) regression               Number of obs      =      3462
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0535                         Obs per group: min =        16
+       between = 0.7237                                        avg =      43.8
+       overall = 0.1475                                        max =        91
+
+                                                F(5,319)           =     36.98
+corr(u_i, Xb)  = 0.2693                         Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 320 clusters in g8schid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             g8scienc |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   3.329428   1.593051     2.09   0.037     .1952143    6.463641
+REGULAR + AIDE CLASS  |   .9177331   1.481959     0.62   0.536    -1.997914    3.833381
+                      |
+        st_whiteasian |   18.04507   3.026352     5.96   0.000     12.09094     23.9992
+              st_girl |  -9.686553   1.323123    -7.32   0.000     -12.2897   -7.083404
+            freelunch |  -14.26805   1.789501    -7.97   0.000    -17.78877   -10.74734
+                _cons |   767.7275   2.879987   266.57   0.000     762.0613    773.3937
+----------------------+----------------------------------------------------------------
+              sigma_u |  9.2147369
+              sigma_e |  39.086395
+                  rho |  .05265307   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem3D_g8scienc.rtf
+dir : seeout
+
+Univariate imputation                       Imputations =        1
+Linear regression                                 added =        1
+Imputed: m=1                                    updated =        0
+
+------------------------------------------------------------------
+                   |               Observations per m             
+                   |----------------------------------------------
+          Variable |   Complete   Incomplete   Imputed |     Total
+-------------------+-----------------------------------+----------
+          g8scienc |       6212         5389      2837 |     11601
+------------------------------------------------------------------
+(complete + incomplete = total; imputed is the minimum across m
+ of the number of filled-in observations.)
+
+Note: right-hand-side variables (or weights) have missing values;
+      model parameters estimated using listwise deletion
+(2837 real changes made)
+
+            variables
+    original          new                meaning
+    -----------------------------------------------------------------------
+    _mi_miss          mi_miss2           0=orig-complete, 1=orig-incomplete
+    _#_g8scienc       g8scienc_#_        imputed values of g8scienc
+    -----------------------------------------------------------------------
+    # = 1
+warning: existing panel variable is not g8schid
+
+Fixed-effects (within) regression               Number of obs      =      3596
+Group variable: g8schid                         Number of groups   =       323
+
+R-sq:  within  = 0.0572                         Obs per group: min =         1
+       between = 0.1905                                        avg =      11.1
+       overall = 0.1487                                        max =        96
+
+                                                F(6,322)           =     34.68
+corr(u_i, Xb)  = 0.1687                         Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 323 clusters in g8schid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+          g8scienc_1_ |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   2.398397   1.555545     1.54   0.124    -.6619178    5.458712
+REGULAR + AIDE CLASS  |  -.4783165    1.46954    -0.33   0.745    -3.369428    2.412795
+                      |
+        st_whiteasian |   19.86372   2.556738     7.77   0.000      14.8337    24.89374
+              st_girl |  -9.926736   1.361709    -7.29   0.000    -12.60571   -7.247766
+            freelunch |  -11.46828   1.694018    -6.77   0.000    -14.80102   -8.135536
+              imputed |  -4.778406   3.932292    -1.22   0.225    -12.51464    2.957823
+                _cons |   766.1774    2.30612   332.24   0.000     761.6405    770.7144
+----------------------+----------------------------------------------------------------
+              sigma_u |  28.386666
+              sigma_e |  38.123168
+                  rho |  .35667954   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem3D2_g8scienc.rtf
+dir : seeout
+warning: existing panel variable is not gkschid
+
+Fixed-effects (within) regression               Number of obs      =      3462
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0381                         Obs per group: min =        16
+       between = 0.7604                                        avg =      43.8
+       overall = 0.1249                                        max =        91
+
+                                                F(5,319)           =     24.04
+corr(u_i, Xb)  = 0.3311                         Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 320 clusters in g8schid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             g8social |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   3.854335   1.702234     2.26   0.024     .5053118    7.203358
+REGULAR + AIDE CLASS  |   .6374902   1.688992     0.38   0.706    -2.685481    3.960461
+                      |
+        st_whiteasian |   15.28658   3.166207     4.83   0.000     9.057295    21.51587
+              st_girl |   .7818892   1.440416     0.54   0.588    -2.052027    3.615805
+            freelunch |  -15.85411   1.834536    -8.64   0.000    -19.46343   -12.24479
+                _cons |   763.9777   2.944496   259.46   0.000     758.1846    769.7707
+----------------------+----------------------------------------------------------------
+              sigma_u |  8.7717006
+              sigma_e |  40.243572
+                  rho |  .04535413   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem3D_g8social.rtf
+dir : seeout
+
+Univariate imputation                       Imputations =        1
+Linear regression                                 added =        1
+Imputed: m=1                                    updated =        0
+
+------------------------------------------------------------------
+                   |               Observations per m             
+                   |----------------------------------------------
+          Variable |   Complete   Incomplete   Imputed |     Total
+-------------------+-----------------------------------+----------
+          g8social |       6209         5392      2837 |     11601
+------------------------------------------------------------------
+(complete + incomplete = total; imputed is the minimum across m
+ of the number of filled-in observations.)
+
+Note: right-hand-side variables (or weights) have missing values;
+      model parameters estimated using listwise deletion
+(2837 real changes made)
+
+            variables
+    original          new                meaning
+    -----------------------------------------------------------------------
+    _mi_miss          mi_miss3           0=orig-complete, 1=orig-incomplete
+    _#_g8social       g8social_#_        imputed values of g8social
+    -----------------------------------------------------------------------
+    # = 1
+warning: existing panel variable is not g8schid
+
+Fixed-effects (within) regression               Number of obs      =      3596
+Group variable: g8schid                         Number of groups   =       323
+
+R-sq:  within  = 0.0423                         Obs per group: min =         1
+       between = 0.1850                                        avg =      11.1
+       overall = 0.1273                                        max =        96
+
+                                                F(6,322)           =     26.36
+corr(u_i, Xb)  = 0.1990                         Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 323 clusters in g8schid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+          g8social_1_ |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |    2.37694   1.676046     1.42   0.157    -.9204444    5.674324
+REGULAR + AIDE CLASS  |  -.8708542   1.698384    -0.51   0.608    -4.212184    2.470476
+                      |
+        st_whiteasian |   16.63228   2.633519     6.32   0.000      11.4512    21.81335
+              st_girl |   .7465762   1.466094     0.51   0.611    -2.137756    3.630909
+            freelunch |   -14.0198   1.770081    -7.92   0.000    -17.50218   -10.53742
+              imputed |  -7.258343   4.514551    -1.61   0.109    -16.14008    1.623397
+                _cons |   763.3376    2.53367   301.28   0.000      758.353    768.3222
+----------------------+----------------------------------------------------------------
+              sigma_u |  28.006517
+              sigma_e |  39.687652
+                  rho |  .33243205   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+Problem3D2_g8social.rtf
+dir : seeout
+
+. 
+. 
+. * Do part c for reading test scores (can't do c for science and social science)
+
+. format g8treads %4.2f
+
+. 
+. quietly centile(gktreads)
+
+. generate median_read_k = r(c_1)
+
+. 
+. quietly summ g8treads, d
+
+. generate min_read_8 = r(min)
+
+. generate max_read_8 = r(max)
+
+. 
+. * Indicator variable to mark imputation
+
+. generate attritor_read_8 = (g8treads == .)
+
+. label var attritor_read_8 "Reading score was imputed"
+
+. 
+. * Max 8th grade score for those above the kindergarten median; min 8th grade score for those
+>  below the kindergarten median
+
+. generate attr_read_8_score = max_read_8 if gktreads >= median_read_k & attritor_read_8 == 1
+(7855 missing values generated)
+
+. replace attr_read_8_score = min_read_8 if gktreads < median_read_k & attritor_read_8 == 1
+(1631 real changes made)
+
+. 
+. * Combine scores
+
+. generate adjusted_read_8 = g8treads
+(5377 missing values generated)
+
+. replace adjusted_read_8 = attr_read_8_score if attr_read_8_score != .
+(5377 real changes made)
+
+. label var adjusted_read_8 "8th grade reading scores with extreme imputations"
+
+. 
+. * Look at differences in medians
+
+. centile(adjusted_read_8)
+
+                                                       -- Binom. Interp. --
+    Variable |     Obs  Percentile      Centile        [95% Conf. Interval]
+-------------+-------------------------------------------------------------
+adjusted_r~8 |   11601         50           775             774         777
+
+. centile(g8treads)
+
+                                                       -- Binom. Interp. --
+    Variable |     Obs  Percentile      Centile        [95% Conf. Interval]
+-------------+-------------------------------------------------------------
+    g8treads |    6224         50        760.00          758.00      761.00
+
+. local orig_median = r(c_1)
+
+. 
+. signrank adjusted_read_8 = `orig_median'
+
+Wilcoxon signed-rank test
+
+        sign |      obs   sum ranks    expected
+-------------+---------------------------------
+    positive |     6811    39419041    33647958
+    negative |     4736    27876876    33647958
+        zero |       54        1485        1485
+-------------+---------------------------------
+         all |    11601    67297401    67297401
+
+unadjusted variance   1.301e+11
+adjustment for ties  -1.230e+09
+adjustment for zeros  -13488.75
+                     ----------
+adjusted variance     1.289e+11
+
+Ho: adjusted_read_8 = 760
+             z =  16.075
+    Prob > |z| =   0.0000
+
+. 
+. * Do the differences between treatment groups grow or shrink after imputation?
+
+. oneway adjusted_read_8 gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE | Summary of 8th grade reading scores
+KINDERGARTE |      with extreme imputations
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |   752.64526   107.79381        1900
+  REGULAR C |   740.24157   107.88785        2194
+  REGULAR + |   741.26804   108.55807        2231
+------------+------------------------------------
+      Total |   744.32964   108.21761        6325
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups      188963.104      2    94481.552      8.09     0.0003
+ Within groups      73871724.6   6322   11684.8663
+------------------------------------------------------------------------
+    Total           74060687.7   6324   11711.0512
+
+Bartlett's test for equal variances:  chi2(2) =   0.1273  Prob>chi2 = 0.938
+
+. oneway g8treads gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE |   Summary of TOTAL READING SCALE
+KINDERGARTE |         SCORE CTBS GRADE 8
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |      767.96       41.26        1044
+  REGULAR C |      765.16       41.14        1211
+  REGULAR + |      764.35       41.49        1215
+------------+------------------------------------
+      Total |      765.72       41.32        3470
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups      7921.24948      2   3960.62474      2.32     0.0982
+ Within groups      5913914.04   3467   1705.77273
+------------------------------------------------------------------------
+    Total           5921835.29   3469   1707.07273
+
+Bartlett's test for equal variances:  chi2(2) =   0.0894  Prob>chi2 = 0.956
+
+. 
+. xtreg adjusted_read_8 i.gkclasst st_whiteasian st_girl freelunch attritor_read_8, i(g8schid)
+>  fe vce(cluster g8schid) nonest
+
+Fixed-effects (within) regression               Number of obs      =      3596
+Group variable: g8schid                         Number of groups   =       323
+
+R-sq:  within  = 0.0593                         Obs per group: min =         1
+       between = 0.1796                                        avg =      11.1
+       overall = 0.1106                                        max =        96
+
+                                                F(6,322)           =     25.09
+corr(u_i, Xb)  = -0.0252                        Prob > F           =    0.0000
+
+                                       (Std. Err. adjusted for 323 clusters in g8schid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+      adjusted_read_8 |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |   3.220156    1.86809     1.72   0.086    -.4550467    6.895359
+REGULAR + AIDE CLASS  |   .0636185   1.947079     0.03   0.974    -3.766983     3.89422
+                      |
+        st_whiteasian |   25.15909   3.465203     7.26   0.000     18.34179    31.97638
+              st_girl |   2.246397   1.607966     1.40   0.163    -.9170482    5.409842
+            freelunch |  -14.87402   2.033797    -7.31   0.000    -18.87523   -10.87281
+      attritor_read_8 |  -27.93615   14.26603    -1.96   0.051    -56.00254    .1302391
+                _cons |   751.2411   2.909181   258.23   0.000     745.5177    756.9645
+----------------------+----------------------------------------------------------------
+              sigma_u |  34.474804
+              sigma_e |  46.681862
+                  rho |  .35291421   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+
+. outreg2 using Problem3D3, word se dec(2) title(OLS: Actual Class Size) ctitle(1) replace
+Problem3D3.rtf
+dir : seeout
+
+. 
+. 
+. *-------------
+
+. * Question 4
+
+. *-------------
+
+. * Teacher experience
+
+. * Simple way
+
+. tabulate gkclasst, sum(gktyears)  
+
+  CLASSROOM |
+       TYPE | Summary of YEARS OF TOTAL TEACHING
+KINDERGARTE |       EXPERIENCE KINDERGARTEN
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |        8.92        5.81        1900
+  REGULAR C |        9.07        5.73        2194
+  REGULAR + |        9.74        5.85        2210
+------------+------------------------------------
+      Total |        9.26        5.81        6304
+
+. oneway gktyears gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE | Summary of YEARS OF TOTAL TEACHING
+KINDERGARTE |       EXPERIENCE KINDERGARTEN
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |        8.92        5.81        1900
+  REGULAR C |        9.07        5.73        2194
+  REGULAR + |        9.74        5.85        2210
+------------+------------------------------------
+      Total |        9.26        5.81        6304
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups      805.839594      2   402.919797     11.98     0.0000
+ Within groups      211869.731   6301   33.6247788
+------------------------------------------------------------------------
+    Total           212675.571   6303   33.7419596
+
+Bartlett's test for equal variances:  chi2(2) =   0.9375  Prob>chi2 = 0.626
+
+. 
+. * Control for school differences
+
+. xtreg gktyears i.gkclasst, i(gkschid) fe vce(cluster gkschid)
+warning: existing panel variable is not gkschid
+
+Fixed-effects (within) regression               Number of obs      =      6304
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0075                         Obs per group: min =        34
+       between = 0.0360                                        avg =      79.8
+       overall = 0.0037                                        max =       156
+
+                                                F(2,78)            =      1.02
+corr(u_i, Xb)  = -0.0368                        Prob > F           =    0.3648
+
+                                        (Std. Err. adjusted for 79 clusters in gkschid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gktyears |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |  -.0484915   .8104524    -0.06   0.952    -1.661978    1.564995
+REGULAR + AIDE CLASS  |   .9279883   .8321074     1.12   0.268    -.7286104    2.584587
+                      |
+                _cons |   8.947538   .4787282    18.69   0.000     7.994463    9.900613
+----------------------+----------------------------------------------------------------
+              sigma_u |  2.7158747
+              sigma_e |  5.1658231
+                  rho |  .21654745   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+
+. test 1.gkclasst 3.gkclasst
+
+ ( 1)  1.gkclasst = 0
+ ( 2)  3.gkclasst = 0
+
+       F(  2,    78) =    1.02
+            Prob > F =    0.3648
+
+. 
+. 
+. * Teacher race
+
+. * Simple way
+
+. tabulate gkclasst t_whiteasian, row
+
++----------------+
+| Key            |
+|----------------|
+|   frequency    |
+| row percentage |
++----------------+
+
+                     | Teacher race is white
+      CLASSROOM TYPE |       or asian
+        KINDERGARTEN | Not White  White/Asi |     Total
+---------------------+----------------------+----------
+         SMALL CLASS |       264      1,636 |     1,900 
+                     |     13.89      86.11 |    100.00 
+---------------------+----------------------+----------
+       REGULAR CLASS |       432      1,740 |     2,172 
+                     |     19.89      80.11 |    100.00 
+---------------------+----------------------+----------
+REGULAR + AIDE CLASS |       340      1,870 |     2,210 
+                     |     15.38      84.62 |    100.00 
+---------------------+----------------------+----------
+               Total |     1,036      5,246 |     6,282 
+                     |     16.49      83.51 |    100.00 
+
+
+. oneway t_whiteasian gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE | Summary of Teacher race is white or
+KINDERGARTE |                asian
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |   .86105263   .34598266        1900
+  REGULAR C |   .80110497    .3992608        2172
+  REGULAR + |   .84615385   .36088287        2210
+------------+------------------------------------
+      Total |   .83508437   .37113393        6282
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups      4.05985479      2   2.02992739     14.80     0.0000
+ Within groups       861.08755   6279   .137137689
+------------------------------------------------------------------------
+    Total           865.147405   6281   .137740392
+
+Bartlett's test for equal variances:  chi2(2) =  45.5325  Prob>chi2 = 0.000
+
+. 
+. * Control for school differences
+
+. xtreg gktrace i.gkclasst, i(gkschid) fe vce(cluster gkschid)
+
+Fixed-effects (within) regression               Number of obs      =      6282
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0077                         Obs per group: min =        34
+       between = 0.0180                                        avg =      79.5
+       overall = 0.0040                                        max =       156
+
+                                                F(2,78)            =      0.93
+corr(u_i, Xb)  = 0.0037                         Prob > F           =    0.4001
+
+                                        (Std. Err. adjusted for 79 clusters in gkschid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+              gktrace |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |  -.0420423    .040918    -1.03   0.307    -.1235037    .0394192
+REGULAR + AIDE CLASS  |  -.0506699   .0420485    -1.21   0.232     -.134382    .0330423
+                      |
+                _cons |   1.195457   .0224651    53.21   0.000     1.150732    1.240182
+----------------------+----------------------------------------------------------------
+              sigma_u |  .26673554
+              sigma_e |  .25293737
+                  rho |  .52653295   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+
+. test 1.gkclasst 3.gkclasst
+
+ ( 1)  1.gkclasst = 0
+ ( 2)  3.gkclasst = 0
+
+       F(  2,    78) =    0.93
+            Prob > F =    0.4001
+
+. 
+. 
+. * Teacher education
+
+. * Simple way
+
+. tabulate gkclasst teacher_MA, row
+
++----------------+
+| Key            |
+|----------------|
+|   frequency    |
+| row percentage |
++----------------+
+
+                     |   Teacher has MA or
+      CLASSROOM TYPE |        higher
+        KINDERGARTEN | no_Master  Masters_D |     Total
+---------------------+----------------------+----------
+         SMALL CLASS |     1,304        596 |     1,900 
+                     |     68.63      31.37 |    100.00 
+---------------------+----------------------+----------
+       REGULAR CLASS |     1,406        788 |     2,194 
+                     |     64.08      35.92 |    100.00 
+---------------------+----------------------+----------
+REGULAR + AIDE CLASS |     1,409        801 |     2,210 
+                     |     63.76      36.24 |    100.00 
+---------------------+----------------------+----------
+               Total |     4,119      2,185 |     6,304 
+                     |     65.34      34.66 |    100.00 
+
+
+. oneway teacher_MA gkclasst, tabulate
+
+  CLASSROOM |
+       TYPE |
+KINDERGARTE | Summary of Teacher has MA or higher
+          N |        Mean   Std. Dev.       Freq.
+------------+------------------------------------
+  SMALL CLA |   .31368421   .46411183        1900
+  REGULAR C |   .35916135   .47986397        2194
+  REGULAR + |   .36244344   .48081473        2210
+------------+------------------------------------
+      Total |   .34660533   .47592647        6304
+
+                        Analysis of Variance
+    Source              SS         df      MS            F     Prob > F
+------------------------------------------------------------------------
+Between groups      2.95948122      2   1.47974061      6.54     0.0014
+ Within groups      1424.70787   6301   .226108217
+------------------------------------------------------------------------
+    Total           1427.66735   6303   .226506006
+
+Bartlett's test for equal variances:  chi2(2) =   3.1138  Prob>chi2 = 0.211
+
+. 
+. * Control for school differences
+
+. xtreg gkthighd i.gkclasst, i(gkschid) fe vce(cluster gkschid)
+
+Fixed-effects (within) regression               Number of obs      =      6304
+Group variable: gkschid                         Number of groups   =        79
+
+R-sq:  within  = 0.0001                         Obs per group: min =        34
+       between = 0.0030                                        avg =      79.8
+       overall = 0.0001                                        max =       156
+
+                                                F(2,78)            =      0.01
+corr(u_i, Xb)  = 0.0017                         Prob > F           =    0.9901
+
+                                        (Std. Err. adjusted for 79 clusters in gkschid)
+---------------------------------------------------------------------------------------
+                      |               Robust
+             gkthighd |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+----------------------+----------------------------------------------------------------
+             gkclasst |
+         SMALL CLASS  |  -.0101194    .080681    -0.13   0.901    -.1707429     .150504
+REGULAR + AIDE CLASS  |  -.0085531   .0709403    -0.12   0.904    -.1497845    .1326782
+                      |
+                _cons |   2.391835   .0429893    55.64   0.000      2.30625     2.47742
+----------------------+----------------------------------------------------------------
+              sigma_u |  .32546441
+              sigma_e |  .48071319
+                  rho |  .31431226   (fraction of variance due to u_i)
+---------------------------------------------------------------------------------------
+
+. test 1.gkclasst 3.gkclasst
+
+ ( 1)  1.gkclasst = 0
+ ( 2)  3.gkclasst = 0
+
+       F(  2,    78) =    0.01
+            Prob > F =    0.9901
+
+. log close
+      name:  <unnamed>
+       log:  /Users/andrew/Desktop/Untitled.log
+  log type:  text
+ closed on:  17 Sep 2013, 14:47:16
+----------------------------------------------------------------------------------------------

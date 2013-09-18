@@ -175,6 +175,7 @@ model1 <- lm(avg.score ~ gkclasst, data=star)
 summary(model1)
 
 library(plm)
+# See http://stats.stackexchange.com/questions/66973/difference-between-fixed-effects-models-in-r-plm-and-stata-xtreg
 star$gkschid <- as.factor(star$gkschid)
 # plm() chokes on huge datasets
 model.data <- star[,c("gktreads", "gktmaths", "gktlists", "gkwordsk",

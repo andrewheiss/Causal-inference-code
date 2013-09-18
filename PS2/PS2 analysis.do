@@ -52,3 +52,6 @@ regress wkswork evacpost age black sex hsgrad someco ba postgrad
 regress earnings evacpost age black sex hsgrad someco ba postgrad
 regress unempinc evacpost age black sex hsgrad someco ba postgrad
 ologit health evacpost age black sex hsgrad someco ba postgrad
+
+* Cheat and use graphics from R. 
+* There's no way I'm spending hours figuring out how to program Monte Carlo simulations of predicted ologit probabilities in Stata...

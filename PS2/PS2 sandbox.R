@@ -56,3 +56,24 @@ plot(health.table)
 # Ordered logit
 model <- polr(health.cat ~ evacpost + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.evac)
 summary(model)
+
+my.mode <- function(x) {
+  which.max(table(x))
+}
+
+# Build range for varied parameter
+sample.range <- 0:1
+
+# Build new data for prediction
+X <- cbind(sample.range, my.mode(katrina.evac$age), my.mode(katrina.evac$black), my.mode(katrina.evac$sex), my.mode(katrina.evac$hsgrad), my.mode(katrina.evac$someco), my.mode(katrina.evac$ba), my.mode(katrina.evac$postgrad))  # All modal values, which includes 1s for all education levels
+X <- cbind(sample.range, my.mode(katrina.evac$age), my.mode(katrina.evac$black), my.mode(katrina.evac$sex), my.mode(katrina.evac$hsgrad), my.mode(katrina.evac$someco), 1, 0)  # College grads
+X <- cbind(sample.range, my.mode(katrina.evac$age), my.mode(katrina.evac$black), my.mode(katrina.evac$sex), 0, 0, 0, 0)  # High school dropouts
+
+# Plot simulated probabilities
+test <- ologit.spaghetti(model, X, y.range=sample.range, y.limit=c(0,1), runs=250,
+                          y.plot.label="Probability of health status\n",
+                          legend.title="Health status: ",
+                          cat.labels=c("Very good", "Good", "Okay", "Bad", "Very bad"),
+                          x.labels=c("2005", "2006"),
+                          x.plot.label="\nYear")
+test

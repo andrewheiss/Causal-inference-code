@@ -6,9 +6,13 @@ library(reshape2)
 library(plyr)
 library(scales)
 library(grid)
+library(RColorBrewer)
 
+my.mode <- function(x) {
+  which.max(table(x))
+}
 
-ologit.spaghetti <- function(model, X, y.range, y.plot.label, legend.title, cat.labels, x.labels, x.plot.label, runs=500, y.limit=c(0, 0.75)) {
+ologit.spaghetti <- function(model, X, y.range, y.plot.label, legend.title, cat.labels, x.labels, x.plot.label, runs=500, y.limit=c(0, 0.75), plot.title=NULL) {
   library(ggplot2)
   library(reshape2)
   library(plyr)
@@ -65,12 +69,13 @@ ologit.spaghetti <- function(model, X, y.range, y.plot.label, legend.title, cat.
   p <- ggplot()
   p <- p + geom_line(aes(x=xvar, y=value, group=category, colour=category), data=single.plot, size=2) + 
     geom_line(aes(x=xvar, y=value, group=interaction(simulation, category), colour=category), alpha=0.05, data=plot.data, size=1) + 
-    scale_colour_brewer(palette="Set1") +
+    scale_colour_brewer(palette="Dark2") +
+#     scale_colour_manual(values = rev(brewer.pal(5,"RdYlGn"))) + 
 #     scale_colour_manual(values = c("#2C7BB6", "#ABD9E9", "#FDAE61", "#D7191C")) + 
     guides(colour = guide_legend(override.aes = list(alpha = 1, size=2))) + 
     scale_y_continuous(labels=percent) + 
     coord_cartesian(ylim=y.limit) + 
-    labs(y=y.plot.label, x=x.plot.label, colour=legend.title) + 
+    labs(y=y.plot.label, x=x.plot.label, colour=legend.title, title=plot.title) + 
     theme_bw() + 
     #     theme(text=element_text(family="Source Sans Pro", size=13)) + 
     theme(plot.background=element_rect(fill=NA, colour=NA), legend.position="top", legend.key=element_blank(), legend.background=element_rect(fill=NA, colour=NA))

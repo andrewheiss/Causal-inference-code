@@ -2,16 +2,26 @@ setwd("~/Documents/Duke 2013-2014/Fall 2013/PubPol 604/Problem set 2/")
 source("../Causal inference code/PS2/Fancy R graphics.R")
 library(foreign)
 library(car)
+library(MASS)
 library(ggplot2)
 library(plyr)
 library(scales)
 library(gridExtra)
+library(stargazer)
+
+# For robust standard errors
+# vcovHC(model, type="HC1") is what Stata does
+library(sandwich)
+library(lmtest)
 
 katrina <- read.dta("PS2.dta")
 health.labels <- c("Excellent", "Very good", "Good", "Fair", "Poor")
 katrina$health.cat <- factor(katrina$health, labels=health.labels, ordered=TRUE)
 katrina$everevac.bin <- factor(katrina$everevac, labels=c("Not evacuated", "Evacuated"))
 katrina$year <- factor(katrina$year, ordered=TRUE)
+# Make sure ordering is correct for the interactions to work right. If not, the model matrices will be linear transformations of each other and will not match Stata (or be correctly interpreted; though significance will be correct)
+# See here for more details: http://stats.stackexchange.com/questions/19271/different-ways-to-write-interaction-terms-in-lm 
+katrina$storm <- factor(ifelse(katrina$year==2005, "Before", "After"), levels=c("Before", "After"))
 
 
 #-------------
@@ -39,7 +49,7 @@ plot.data <- melt(katrina.2006.evac[,c("wkswork","earnings","unempinc")])
 levels(plot.data$variable) <- c("Weeks worked", "Earnings", "Unemployment income")
 q1.p1 <- ggplot(aes(x=value, y = ..scaled.., fill=variable), data=plot.data)
 q1.p1 <- q1.p1 + geom_density() + facet_grid(. ~ variable, scales="free") +
-  labs(x=NULL, y="Scaled density\n", title="Employment outcomes (2006)\n") + 
+  labs(x=NULL, y="Scaled density\n", title="Employment outcomes\n") + 
   theme_bw() + scale_fill_brewer(palette="Accent") + theme(legend.position="none")
 q1.p1
 
@@ -47,7 +57,7 @@ q1.p1
 plot.data <- data.frame(prop.table(health.table))
 q1.p2 <- ggplot(plot.data, aes(health.cat, Freq))
 q1.p2 <- q1.p2 + geom_bar(stat="identity", fill="#386CB0") + 
-  labs(x=NULL, y="Frequency\n", title="Health status (2006)\n") + 
+  labs(x=NULL, y="Frequency\n", title="Health status\n") + 
   theme_bw() + scale_y_continuous(labels=percent)
 q1.p2
 
@@ -111,7 +121,7 @@ plot.data <- ddply(katrina.evac, .(year), summarise,
                    health.cat=factor(names(table(health.cat)), levels=health.labels, ordered=TRUE))
 q2.p4 <- ggplot(plot.data, aes(health.cat, prop, fill=year))
 q2.p4 <- q2.p4 + geom_bar(stat="identity", position='dodge') +
-  labs(x=NULL, y="Proportion\n", title="Health stats", fill=NULL) + 
+  labs(x=NULL, y="Proportion\n", title="Health status", fill=NULL) + 
   theme_bw() + scale_y_continuous(labels=percent) + scale_fill_brewer(palette="Set1") + 
   theme(legend.position="top")
 q2.p4
@@ -119,20 +129,37 @@ q2.p4
 
 # Arrange everything nicely
 q2.raw <- arrangeGrob(q2.p1, q2.p2, q2.p3, q2.p4, ncol=2, main="Evacuees: 2005 vs. 2006\nAverage for all individuals")
+q2.raw <- arrangeGrob(q2.p1, q2.p2, q2.p3, q2.p4, ncol=2)
 ggsave(q2.raw, file="q2_raw.pdf", width=6, height=4, scale=2)
 
 # Control for stuff
-model.work <- lm(wkswork ~ evacpost + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.evac)
+model.work <- lm(wkswork ~ year + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.evac)
 summary(model.work)
+work.se <- sqrt(diag(vcovHC(model.work, type="HC1")))
+# coeftest(model.work, vcovHC(model.work, type="HC1"))  # This works too
 
-model.income <- lm(earnings ~ evacpost + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.evac)
+model.income <- lm(earnings ~ year + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.evac)
 summary(model.income)
+income.se <- sqrt(diag(vcovHC(model.income, type="HC1")))
 
-model.unemp <- lm(unempinc ~ evacpost + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.evac)
+model.unemp <- lm(unempinc ~ year + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.evac)
 summary(model.unemp)
+unemp.se <- sqrt(diag(vcovHC(model.unemp, type="HC1")))
 
-model.health <- polr(health.cat ~ evacpost + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.evac)
+model.health <- polr(health.cat ~ year + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.evac)
 summary(model.health)
+
+cov.labels <- c("Year (2006)", "Age", "Race (Black)", "Sex (Female)", "High school", "Some college", "Bachelor's degree", "Post-graduate work")
+col.labels <- c("Weeks worked", "Earnings", "Unemployment income", "Health")
+stargazer(model.work, model.income, model.unemp, model.health, type="latex", out="q2table.tex", 
+          covariate.labels=cov.labels, dep.var.labels=col.labels, 
+          se=list(work.se, income.se, unemp.se, NULL), notes="OLS models use robust standard errors")
+system("latex2rtf q2table.tex")  # Totally cheating here :) ... install latex2rtf first
+
+# You have to use lrm + robcov in the rms package to get robust ologit standard errors
+# library(rms)
+# model.health.robust <- lrm(health.cat ~ as.numeric(year) + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.evac, x=TRUE, y=TRUE)
+# robcov(model.health.robust)
 
 
 # Simulate results to actually understand what's going on
@@ -208,7 +235,7 @@ q2.p8
 
 
 # Arrange everything nicely
-q2.control <- arrangeGrob(q2.p5, q2.p6, q2.p7, q2.p8, ncol=2, main="Evacuees: 2005 vs. 2006\nHypothetical 21-year-old black male with a high-school diploma (1,000 draws)")
+q2.control <- arrangeGrob(q2.p5, q2.p6, q2.p7, q2.p8, ncol=2)
 ggsave(q2.control, file="q2_control.pdf", width=6, height=4, scale=2)
 
 
@@ -259,8 +286,9 @@ q3.p3
 
 # Health as categorical
 health.table <- xtabs(~ health.cat + everevac.bin, data=katrina.2006)
-chisq.test(health.table)  # summary(health.table) also works
+(health.chisq <- chisq.test(health.table))  # summary(health.table) also works
 prop.table(health.table, 2)
+round(health.chisq$residuals^2, 3)  # Components of chi^2
 
 plot.data <- ddply(katrina.2006, .(everevac.bin), summarise,
                    prop=prop.table(table(health.cat)), 
@@ -273,7 +301,7 @@ q3.p4 <- q3.p4 + geom_bar(stat="identity", position='dodge') +
 q3.p4
 
 # Arrange everything nicely
-q3.raw <- arrangeGrob(q3.p1, q3.p2, q3.p3, q3.p4, ncol=2, main="Evacuees vs. Non-Evacuees: 2006\nAverage for all individuals")
+q3.raw <- arrangeGrob(q3.p1, q3.p2, q3.p3, q3.p4, ncol=2)
 q3.raw
 ggsave(q3.raw, file="q3_raw.pdf", width=6, height=4, scale=2)
 
@@ -281,15 +309,25 @@ ggsave(q3.raw, file="q3_raw.pdf", width=6, height=4, scale=2)
 # Control for stuff
 model.work <- lm(wkswork ~ everevac + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.2006)
 summary(model.work)
+work.se <- sqrt(diag(vcovHC(model.work, type="HC1")))
 
 model.income <- lm(earnings ~ everevac + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.2006)
 summary(model.income)
+income.se <- sqrt(diag(vcovHC(model.income, type="HC1")))
 
 model.unemp <- lm(unempinc ~ everevac + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.2006)
 summary(model.unemp)
+unemp.se <- sqrt(diag(vcovHC(model.unemp, type="HC1")))
 
 model.health <- polr(health.cat ~ everevac + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.2006)
 summary(model.health)
+
+cov.labels <- c("Evacuated", "Age", "Race (Black)", "Sex (Female)", "High school", "Some college", "Bachelor's degree", "Post-graduate work")
+col.labels <- c("Weeks worked", "Earnings", "Unemployment income", "Health")
+stargazer(model.work, model.income, model.unemp, model.health, type="latex", out="q3table.tex", 
+          covariate.labels=cov.labels, dep.var.labels=col.labels, 
+          se=list(work.se, income.se, unemp.se, NULL), notes="OLS models use robust standard errors")
+system("latex2rtf q3table.tex")
 
 
 # Simulate results to actually understand what's going on
@@ -307,7 +345,7 @@ plot.data$type <- relevel(plot.data$type, "Not evacuated")
 
 q3.p5 <- ggplot(plot.data, aes(x=type, y=estimate, fill=type))
 q3.p5 <- q3.p5 + geom_violin(colour="white") + 
-  stat_summary(aes(group=1), fun.y=mean, geom="line", color="darkgrey", size=1) +
+#   stat_summary(aes(group=1), fun.y=mean, geom="line", color="darkgrey", size=1) +
   stat_summary(aes(group=1), fun.y=mean, geom="point", color="darkgrey", size=4) +
   labs(x=NULL, y="Weeks worked\n", title="Number of weeks worked\n") + 
   theme_bw() + scale_fill_brewer(palette="Set1") + theme(legend.position="none")
@@ -323,7 +361,7 @@ plot.data$type <- relevel(plot.data$type, "Not evacuated")
 
 q3.p6 <- ggplot(plot.data, aes(x=type, y=estimate, fill=type))
 q3.p6 <- q3.p6 + geom_violin(colour="white") + 
-  stat_summary(aes(group=1), fun.y=mean, geom="line", color="darkgrey", size=1) +
+#   stat_summary(aes(group=1), fun.y=mean, geom="line", color="darkgrey", size=1) +
   stat_summary(aes(group=1), fun.y=mean, geom="point", color="darkgrey", size=4) +
   labs(x=NULL, y="Income\n", title="Income\n") + 
   theme_bw() + scale_y_continuous(labels=dollar) + scale_fill_brewer(palette="Set1") + theme(legend.position="none")
@@ -339,7 +377,7 @@ plot.data$type <- relevel(plot.data$type, "Not evacuated")
 
 q3.p7 <- ggplot(plot.data, aes(x=type, y=estimate, fill=type))
 q3.p7 <- q3.p7 + geom_violin(colour="white") + 
-  stat_summary(aes(group=1), fun.y=mean, geom="line", color="darkgrey", size=1) +
+#   stat_summary(aes(group=1), fun.y=mean, geom="line", color="darkgrey", size=1) +
   stat_summary(aes(group=1), fun.y=mean, geom="point", color="darkgrey", size=4) +
   labs(x=NULL, y="Unemployment compensation\n", title="Unemployment compensation\n") + 
   theme_bw() + scale_y_continuous(labels=dollar) + scale_fill_brewer(palette="Set1") + theme(legend.position="none")
@@ -354,17 +392,78 @@ rownames(X.mat) <- NULL
 colnames(X.mat) <- NULL
 
 # Plot simulated predicted probabilities
-q3.p8 <- ologit.spaghetti(model.health, X.mat, y.range=everevac.test, y.limit=c(0, 0.50), runs=300,
-                          y.plot.label="Probability of reporting\n",
-                          legend.title="Health status: ",
-                          cat.labels=health.labels,
-                          x.labels=c("2005", "2006"),
-                          x.plot.label=NULL,
-                          plot.title="Probability of health status")
+q3.p8 <- ologit.points(model.health, X.mat, y.range=everevac.test, y.limit=c(0, 0.50), runs=500,
+                       y.plot.label="Probability of reporting\n",
+                       legend.title="Health status: ",
+                       cat.labels=health.labels,
+                       x.labels=c("Not evacuated", "Evacuated"),
+                       x.plot.label=NULL,
+                       plot.title="Probability of health status")
 q3.p8
 
 
 # Arrange everything nicely
-q3.control <- arrangeGrob(q3.p5, q3.p6, q3.p7, q3.p8, ncol=2, main="Evacuees vs. Non-Evacuees: 2006\nHypothetical 21-year-old black male with a high-school diploma (1,000 draws)")
+q3.control <- arrangeGrob(q3.p5, q3.p6, q3.p7, q3.p8, ncol=2)
 q3.control
 ggsave(q3.control, file="q3_control.pdf", width=6, height=4, scale=2)
+
+
+#-------------
+# Question 4
+#-------------
+# Two groups: evacuees, non-evacuees (everevac)
+# Two times: 2005, 2006 
+
+# Models without controls
+did.work <- lm(wkswork ~ storm + everevac.bin + storm:everevac.bin, data=katrina)
+summary(did.work)
+
+did.income <- lm(earnings ~ storm + everevac.bin + storm:everevac.bin, data=katrina)
+summary(did.income)
+
+did.unemp <- lm(unempinc ~ storm + everevac.bin + storm:everevac.bin, data=katrina)
+summary(did.unemp)
+
+did.health <- polr(health.cat ~ storm + everevac.bin + storm:everevac.bin, data=katrina)
+summary(did.health)
+
+
+# Models with controls
+did.work.full <- update(did.work, . ~ . + age + black + sex + hsgrad + someco + ba + postgrad)
+summary(did.work.full)
+
+did.income.full <- update(did.income, . ~ . + age + black + sex + hsgrad + someco + ba + postgrad)
+summary(did.income.full)
+
+did.unemp.full <- update(did.unemp, . ~ . + age + black + sex + hsgrad + someco + ba + postgrad)
+summary(did.unemp.full)
+
+did.health.full <- update(did.health, . ~ . + age + black + sex + hsgrad + someco + ba + postgrad)
+summary(did.health.full)
+
+
+#-------------
+# Question 5
+#-------------
+# Part A
+# Noncompliers (i.e. people who are not currently evacuated) vs. compliers (i.e. people who are still evacuated) in 2006
+complier.ids <- subset(katrina, evacnow==1)$persid
+noncomplier.ids <- setdiff(katrina$persid, complier.ids)
+
+noncompliers <- subset(katrina, persid %in% noncomplier.ids) 
+
+did.work.noncompliers <- lm(wkswork ~ storm + everevac.bin + storm:everevac.bin + age + black + sex + hsgrad + someco + ba + postgrad, data=noncompliers)
+summary(did.work.noncompliers)
+
+# Etc.
+
+
+# Part B
+asdf <- lm(evacnow ~ everevac + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.2006)
+asdf <- lm(everevac ~ evacnow + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.2006)
+summary(asdf)
+
+asdf.logit <- glm(factor(evacnow) ~ factor(everevac) + age + black + sex + hsgrad + someco + ba + postgrad, data=katrina.2006, family=binomial(link="logit"))
+summary(asdf.logit)
+exp(asdf.logit$coefficients[2])
+# Huh?

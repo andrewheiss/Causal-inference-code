@@ -44,10 +44,10 @@ tabulate health year, chi2 column
 * spineplot health year
 
 * Regressions
-regress wkswork evacpost age black sex hsgrad someco ba postgrad
-regress earnings evacpost age black sex hsgrad someco ba postgrad
-regress unempinc evacpost age black sex hsgrad someco ba postgrad
-ologit health evacpost age black sex hsgrad someco ba postgrad
+regress wkswork year age black sex hsgrad someco ba postgrad, robust
+regress earnings year age black sex hsgrad someco ba postgrad, robust
+regress unempinc year age black sex hsgrad someco ba postgrad, robust
+ologit health year age black sex hsgrad someco ba postgrad, robust
 
 * Cheat and use graphics from R. 
 * There's no way I'm spending hours figuring out how to program Monte Carlo
@@ -74,7 +74,7 @@ oneway unempinc everevac
 ttest unempinc, by(everevac) unequal
 
 * Health status
-tabulate health everevac, chi2 column 
+tabulate health everevac, chi2 column cchi2 
 * spineplot health everevac
 
 regress wkswork everevac age black sex hsgrad someco ba postgrad
@@ -83,3 +83,36 @@ regress unempinc everevac age black sex hsgrad someco ba postgrad
 ologit health everevac age black sex hsgrad someco ba postgrad
 
 * Use R graphics again :)
+
+
+*-------------
+* Question 4
+*-------------
+use PS2.dta, clear
+
+* Two groups: evacuees, non-evacuees (everevac)
+* Two times: 2005, 2006 
+recode year (2005 = 0) (2006 = 1), gen(after_storm) 
+gen interaction = after_storm*everevac
+
+* Simple models
+regress wkswork after_storm everevac interaction, robust
+regress earnings after_storm everevac interaction, robust
+regress unempinc after_storm everevac interaction, robust
+ologit health after_storm everevac interaction, robust
+
+* With controls
+regress wkswork after_storm everevac interaction age black sex hsgrad someco ba postgrad, robust
+regress earnings after_storm everevac interaction age black sex hsgrad someco ba postgrad, robust
+regress unempinc after_storm everevac interaction age black sex hsgrad someco ba postgrad, robust
+ologit health after_storm everevac interaction age black sex hsgrad someco ba postgrad, robust
+
+
+*-------------
+* Question 5
+*-------------
+* Part A
+* Noncompliers (i.e. people who are not currently evacuated) vs. compliers (i.e. people who are still evacuated) in 2006
+regress wkswork after_storm everevac interaction age black sex hsgrad someco ba postgrad, robust
+
+

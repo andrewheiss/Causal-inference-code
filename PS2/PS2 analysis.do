@@ -113,6 +113,20 @@ ologit health after_storm everevac interaction age black sex hsgrad someco ba po
 *-------------
 * Part A
 * Noncompliers (i.e. people who are not currently evacuated) vs. compliers (i.e. people who are still evacuated) in 2006
-regress wkswork after_storm everevac interaction age black sex hsgrad someco ba postgrad, robust
+* Split evacpost into two variables: complier*post and noncomplier*post
+* complier*post = evacnow
+* noncomplier = 1 when denier and backhome are 1
+gen noncomplier=1 if denier==1 | backhome==1
+replace noncomplier=0 if denier==0 & backhome==0
+
+reg wkswork noncomplier evacnow year everevac
+
+regress wkswork noncomplier evacnow after_storm everevac age black sex hsgrad someco ba postgrad, robust
+regress earnings noncomplier evacnow after_storm everevac age black sex hsgrad someco ba postgrad, robust
+regress unempinc noncomplier evacnow after_storm everevac age black sex hsgrad someco ba postgrad, robust
+ologit health noncomplier evacnow after_storm everevac black sex hsgrad someco ba postgrad, robust
 
 
+* Part B
+tabulate evacnow everevac if year==2006
+regress evacnow everevac if year==2006

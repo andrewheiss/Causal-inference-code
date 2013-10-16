@@ -16,7 +16,7 @@ tabulate growth expgrow, chi2 column cchi2
 *-------------
 * rd syntax: rd outcomevar [treatmentvar] assignmentvar
 * The default is 50 bootstrap replications, but that takes a while
-bootstrap, rep(10) : rd avgrow06 expgrow avgrow05
+bootstrap, rep(100) : rd avgrow06 expgrow avgrow05
 
 
 *-------------

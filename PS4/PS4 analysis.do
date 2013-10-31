@@ -17,7 +17,6 @@ use "Assignment4.dta" if YOB < 40, clear
 reg LWKLYWGE EDUC i.YOB
 
 * Table 5, column 2
-
 * Manually
 * First stage
 regress EDUC YOB YOB##QOB

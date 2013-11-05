@@ -19,18 +19,37 @@ plot.data$yob <- 1900 + plot.data$YOB +
 plot.data$QOB <- factor(plot.data$QOB, labels=c("1st", "2nd", "3rd", "4th"), ordered=TRUE)
 plot.data$decade <- factor(ifelse(plot.data$yob < 1940, "1930-39", "1940-49"))
 
-fig1 <- ggplot(
-  , aes(x=yob, y=years.completed))
+fig1 <- ggplot(plot.data, aes(x=yob, y=years.completed))
 fig1 <- fig1 + geom_line(colour="grey", size=1) + 
   geom_point(aes(colour=QOB, shape=QOB), size=4) + 
   scale_colour_brewer(name="Quarter of birth", palette="Set1") + 
   scale_shape_manual(name="Quarter of birth", values=c(20, 20, 20, 17)) +
   scale_x_continuous(breaks=seq(1930, 1950, 2)) + theme_bw() +
   theme(legend.key=element_blank(), legend.background=element_rect(fill=NA, colour=NA)) +
-  labs(title="Years of education and season of birth\n", x="\nYear of birth", y="Years of completed education\n") + facet_wrap(~ decade, scales="free_x", nrow=2)
+  labs(title=NULL, x=NULL, y="Years of completed education\n") + facet_wrap(~ decade, scales="free_x", nrow=2)
 fig1
-ggsave(fig1, file="fig1.pdf", width=6, height=4, scale=2)
+ggsave(fig1, file="fig1.png", width=6, height=4, scale=2)
 
+
+plot.data <- ddply(educ, ~ YOB + QOB, summarise,
+                   income=mean(LWKLYWGE, na.rm=T))
+# Convert quarter numbers to fractions of years
+plot.data$yob <- 1900 + plot.data$YOB + 
+  sapply(plot.data$QOB, function(x) switch(x, 0.0, 0.25, 0.5, 0.75))
+
+plot.data$QOB <- factor(plot.data$QOB, labels=c("1st", "2nd", "3rd", "4th"), ordered=TRUE)
+plot.data$decade <- factor(ifelse(plot.data$yob < 1940, "1930-39", "1940-49"))
+
+fig2 <- ggplot(plot.data, aes(x=yob, y=income))
+fig2 <- fig2 + geom_line(colour="grey", size=1) + 
+  geom_point(aes(colour=QOB, shape=QOB), size=4) + 
+  scale_colour_brewer(name="Quarter of birth", palette="Set1") + 
+  scale_shape_manual(name="Quarter of birth", values=c(20, 20, 20, 17)) +
+  scale_x_continuous(breaks=seq(1930, 1950, 2)) + theme_bw() +
+  theme(legend.key=element_blank(), legend.background=element_rect(fill=NA, colour=NA)) +
+  labs(title=NULL, x=NULL, y="Logged weekly income\n") + facet_wrap(~ decade, scales="free_x", nrow=2)
+fig2
+ggsave(fig2, file="fig2.png", width=6, height=4, scale=2)
 
 
 #----------------------------------------------------------

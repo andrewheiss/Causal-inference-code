@@ -16,7 +16,7 @@ use "Assignment4.dta" if YOB < 40, clear
 
 * Table 5, column 1
 reg LWKLYWGE EDUC i.YOB
-outreg2 using Question2.xls, se dec(5) title(Quarter of Birth Instrument) ctitle(OLS) keep(EDUC) nocons addn("Constants supressed") addtext(Year fixed effects, Yes) alpha(0.001, 0.01, 0.05) replace
+outreg2 using Question2.xls, se dec(5) title(Quarter of Birth Instrument) ctitle(OLS) keep(EDUC) nocons addn("Constants suppressed") addtext(Year fixed effects, Yes) alpha(0.001, 0.01, 0.05) replace
 
 * Table 5, column 2
 * Manually
@@ -73,7 +73,7 @@ generate hs_grad = EDUC >= 12
 
 * OLS
 reg LWKLYWGE hs_grad i.YOB
-outreg2 using Question5.xls, se dec(5) title(High School Graduation Instrument) ctitle(OLS) keep(hs_grad) nocons addn("Constants supressed") addtext(Year fixed effects, Yes) alpha(0.001, 0.01, 0.05) replace
+outreg2 using Question5.xls, se dec(5) title(High School Graduation Instrument) ctitle(OLS) keep(hs_grad) nocons addn("Constants suppressed") addtext(Year fixed effects, Yes) alpha(0.001, 0.01, 0.05) replace
 
 
 * 2SLS
@@ -109,7 +109,7 @@ generate college_grad = EDUC >= 16
 
 * OLS
 reg LWKLYWGE college_grad i.YOB
-outreg2 using Question6.xls, se dec(5) title(College Graduation Instrument) ctitle(OLS) keep(college_grad) nocons addn("Constants supressed") addtext(Year fixed effects, Yes) alpha(0.001, 0.01, 0.05) replace
+outreg2 using Question6.xls, se dec(5) title(College Graduation Instrument) ctitle(OLS) keep(college_grad) nocons addn("Constants suppressed") addtext(Year fixed effects, Yes) alpha(0.001, 0.01, 0.05) replace
 
 
 * 2SLS

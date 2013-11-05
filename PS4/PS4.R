@@ -25,10 +25,12 @@ fig1 <- fig1 + geom_line(colour="grey", size=1) +
   scale_colour_brewer(name="Quarter of birth", palette="Set1") + 
   scale_shape_manual(name="Quarter of birth", values=c(20, 20, 20, 17)) +
   scale_x_continuous(breaks=seq(1930, 1950, 2)) + theme_bw() +
-  theme(legend.key=element_blank(), legend.background=element_rect(fill=NA, colour=NA)) +
+  theme(legend.key=element_blank(), legend.position="bottom", legend.background=element_rect(fill=NA, colour=NA)) + 
   labs(title=NULL, x=NULL, y="Years of completed education\n") + facet_wrap(~ decade, scales="free_x", nrow=2)
 fig1
 ggsave(fig1, file="fig1.png", width=6, height=4, scale=2)
+ggsave(fig1, file="fig1.png", width=6.5, units="in")
+
 
 
 plot.data <- ddply(educ, ~ YOB + QOB, summarise,
@@ -46,10 +48,11 @@ fig2 <- fig2 + geom_line(colour="grey", size=1) +
   scale_colour_brewer(name="Quarter of birth", palette="Set1") + 
   scale_shape_manual(name="Quarter of birth", values=c(20, 20, 20, 17)) +
   scale_x_continuous(breaks=seq(1930, 1950, 2)) + theme_bw() +
-  theme(legend.key=element_blank(), legend.background=element_rect(fill=NA, colour=NA)) +
+  theme(legend.key=element_blank(), legend.position="bottom", legend.background=element_rect(fill=NA, colour=NA)) + 
   labs(title=NULL, x=NULL, y="Logged weekly income\n") + facet_wrap(~ decade, scales="free_x", nrow=2)
 fig2
-ggsave(fig2, file="fig2.png", width=6, height=4, scale=2)
+# ggsave(fig2, file="fig2.png", width=6, height=4, scale=2)
+ggsave(fig2, file="fig2.png", width=6.5, units="in")
 
 
 #----------------------------------------------------------
